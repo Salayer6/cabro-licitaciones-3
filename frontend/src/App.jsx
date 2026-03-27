@@ -70,6 +70,14 @@ function App() {
     }
   }
 
+  const copyToClipboard = (text) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    const prevStatus = status;
+    setStatus(`📋 ID Copiado: ${text}`);
+    setTimeout(() => setStatus(prevStatus), 2000);
+  }
+
   return (
     <div className="container">
       <header>
@@ -116,9 +124,18 @@ function App() {
       </header>
 
       {status && (
-        <div className="glass card" style={{ marginBottom: '2rem', borderLeft: '4px solid var(--primary)', padding: '1rem 1.5rem' }}>
+        <div className="glass card status-fixed" style={{ 
+          marginBottom: '2rem', 
+          borderLeft: '4px solid var(--primary)', 
+          padding: '1rem 1.5rem',
+          position: status.includes('Copiado') ? 'fixed' : 'relative',
+          top: status.includes('Copiado') ? '2rem' : 'auto',
+          right: status.includes('Copiado') ? '2rem' : 'auto',
+          zIndex: 1000,
+          boxShadow: status.includes('Copiado') ? '0 10px 25px rgba(0,0,0,0.5)' : 'none'
+        }}>
           <p style={{ color: 'var(--text-main)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span role="img" aria-label="info">ℹ️</span> {status}
+            <span role="img" aria-label="info">{status.includes('Copiado') ? '✅' : 'ℹ️'}</span> {status}
           </p>
         </div>
       )}
@@ -126,7 +143,7 @@ function App() {
       {!showAuthModal && (
         <div className="glass card" style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(245, 158, 11, 0.1)' }}>
           <p style={{ fontSize: '0.85rem', color: '#fbbf24' }}>
-            <strong>Aviso Anti-Bot:</strong> Dado que el firewall de Mercado Público está bloqueando navegadores automatizados, por favor inicia sesión en tu navegador normal, copia tu 'Cookie' (desde la pestaña de Red en F12) y haz clic en "Inyectar Sesión Manual" para pegarla.
+            <strong>Aviso Anti-Bot:</strong> Mercado Público bloquea automatización. Copia la cookie de tu navegador e inyéctala manualmente.
           </p>
         </div>
       )}
@@ -144,13 +161,24 @@ function App() {
             </div>
           ) : (
             licitaciones.map((l, index) => (
-              <div key={index} className="glass card">
-                <span className="badge badge-orange" style={{ marginBottom: '0.5rem', display: 'inline-block' }}>{l.id || 'ID Pendiente'}</span>
-                <h3 style={{ marginBottom: '0.5rem', fontSize: '1.1rem' }}>{l.nombre || 'Licitación sin nombre'}</h3>
-                <p style={{ color: 'var(--text-alt)', fontSize: '0.85rem', marginBottom: '1rem' }}>{l.organismo || 'Organismo desconocido'}</p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--success)', fontWeight: '600' }}>{l.monto || '$0'}</span>
-                  <span style={{ fontSize: '0.75rem', color: 'var(--text-alt)' }}>Cierra: {l.fechaCierre || 'N/A'}</span>
+              <div key={index} className="glass card card-hover">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <span 
+                    className="badge badge-orange" 
+                    style={{ marginBottom: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}
+                    onClick={() => copyToClipboard(l.id)}
+                    title="Clic para copiar ID"
+                  >
+                    {l.id || 'N/A'} 📋
+                  </span>
+                </div>
+                <h3 style={{ marginBottom: '0.5rem', fontSize: '1.05rem', lineHeight: '1.3' }}>{l.nombre || 'Licitación sin nombre'}</h3>
+                <p style={{ color: 'var(--text-alt)', fontSize: '0.8rem', marginBottom: '1.5rem', display: 'flex', gap: '0.4rem' }}>
+                  <span role="img" aria-label="org">🏢</span> {l.organismo}
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--success)', fontWeight: '700' }}>{l.monto || '$0'}</span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-alt)' }}>Cierra: {l.fechaCierre || 'N/A'}</span>
                 </div>
               </div>
             ))
@@ -169,9 +197,11 @@ function App() {
             </div>
           ) : (
             comprasAgiles.map((c, index) => (
-              <div key={index} className="glass card">
-                <h3 style={{ marginBottom: '0.5rem', fontSize: '1.1rem' }}>{c.descripcion || 'Sin descripción'}</h3>
-                <p style={{ color: 'var(--text-alt)', fontSize: '0.85rem' }}>{c.organismo}</p>
+              <div key={index} className="glass card card-hover">
+                <h3 style={{ marginBottom: '0.5rem', fontSize: '1.05rem' }}>{c.descripcion || 'Sin descripción'}</h3>
+                <p style={{ color: 'var(--text-alt)', fontSize: '0.8rem' }}>
+                   <span role="img" aria-label="org">🏢</span> {c.organismo}
+                </p>
               </div>
             ))
           )}
