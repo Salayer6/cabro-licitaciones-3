@@ -77,9 +77,9 @@ class MercadoPublicoScanner {
       if (!this.page) await this.init();
       
       console.log('Navegando a Buscar Licitación...');
-      await this.page.goto('https://www.mercadopublico.cl/Portal/Seleccion/BuscarLicitacion.aspx', { waitUntil: 'networkidle2' });
+      await this.page.goto('https://www.mercadopublico.cl/Portal/Seleccion/BuscarLicitacion.aspx', { waitUntil: 'domcontentloaded' });
       
-      await this.page.waitForSelector('.c-tabla-compras', { timeout: 10000 }).catch(() => null);
+      await this.page.waitForSelector('.c-tabla-compras', { timeout: 15000 }).catch(() => null);
 
       const results = await this.page.evaluate(() => {
         const rows = Array.from(document.querySelectorAll('.c-tabla-compras tbody tr'));
@@ -109,7 +109,7 @@ class MercadoPublicoScanner {
       if (!this.page) await this.init();
       
       console.log('Navegando a Compras Ágiles...');
-      await this.page.goto('https://www.mercadopublico.cl/Portal/Seleccion/ComprasAgiles.aspx', { waitUntil: 'networkidle2' }).catch(() => null);
+      await this.page.goto('https://www.mercadopublico.cl/Portal/Seleccion/ComprasAgiles.aspx', { waitUntil: 'domcontentloaded' }).catch(() => null);
       
       const results = [
         { descripcion: 'Compra Ágil 1 - Computadores para la Salud', organismo: 'Servicio de Salud Metropolitano' },
