@@ -11,11 +11,11 @@ function App() {
 
   const fetchTenders = async () => {
     try {
-      const resLicitaciones = await fetch('http://localhost:3001/api/licitaciones')
+      const resLicitaciones = await fetch('/api/licitaciones')
       const dataLicitaciones = await resLicitaciones.json()
       setLicitaciones(dataLicitaciones)
 
-      const resCompras = await fetch('http://localhost:3001/api/compras-agiles')
+      const resCompras = await fetch('/api/compras-agiles')
       const dataCompras = await resCompras.json()
       setComprasAgiles(dataCompras)
     } catch (err) {
@@ -31,7 +31,7 @@ function App() {
     setLoading(true)
     setStatus('Iniciando navegador para ClaveÚnica...')
     try {
-      const res = await fetch('http://localhost:3001/api/auth/login', { method: 'POST' })
+      const res = await fetch('/api/auth/login', { method: 'POST' })
       const data = await res.json()
       if (data.status === 'success') {
         setStatus('Autenticación guardada con éxito.')
@@ -48,7 +48,7 @@ function App() {
     setScanning(true)
     setStatus('Escaneando Mercado Público...')
     try {
-      const res = await fetch('http://localhost:3001/api/scan', { method: 'POST' })
+      const res = await fetch('/api/scan', { method: 'POST' })
       const data = await res.json()
       if (data.status === 'success') {
         setStatus(`Escaneo completado: ${data.summary.licitaciones} licitaciones, ${data.summary.compras} compras ágiles.`)
@@ -81,7 +81,7 @@ function App() {
                 if(!val) return;
                 setStatus('Guardando cookie...');
                 try {
-                  await fetch('http://localhost:3001/api/auth/cookie', {
+                  await fetch('/api/auth/cookie', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ cookie: val })

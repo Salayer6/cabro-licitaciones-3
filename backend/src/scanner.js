@@ -17,14 +17,22 @@ class MercadoPublicoScanner {
   }
 
   async init() {
-    this.browser = await puppeteer.launch({
-      headless: false,
-      executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+    const launchOptions = {
+      headless: true,
       userDataDir: this.userDataDir,
       ignoreDefaultArgs: ['--enable-automation'],
-      defaultViewport: null,
-      args: ['--start-maximized']
-    });
+      args: ['--no-sandbox', '--disable-setuid-sandbox']
+    };
+
+    // Only add executablePath if we are on Windows and it's not production
+    if (process.platform === 'win32' && process.env.NODE_ENV !== 'production') {
+      launchOptions.executablePath = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+      launchOptions.headless = false; // Easier debugging locally
+      launchOptions.args.push('--start-maximized');
+      launchOptions.defaultViewport = null;
+    }
+
+    this.browser = await puppeteer.launch(launchOptions);
     
     const pages = await this.browser.pages();
     this.page = pages[0] || (await this.browser.newPage());
