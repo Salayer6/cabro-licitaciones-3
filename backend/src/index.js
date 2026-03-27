@@ -11,11 +11,12 @@ app.use(cors());
 app.use(express.json());
 
 const scanner = new MercadoPublicoScanner();
-const DATA_DIR = path.join(__dirname, '../../data');
+const DATA_DIR = path.join(__dirname, '../data');
 if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR);
 
 const LicitacionesPath = path.join(DATA_DIR, 'licitaciones.json');
 const ComprasAgilesPath = path.join(DATA_DIR, 'compras_agiles.json');
+const cookiePath = path.join(DATA_DIR, 'manual_cookie.txt'); // Defined cookiePath here
 
 // Get all tenders
 app.get('/api/licitaciones', (req, res) => {
@@ -42,7 +43,7 @@ app.post('/api/auth/cookie', async (req, res) => {
   try {
     const { cookie } = req.body;
     if (cookie) {
-      fs.writeFileSync(path.join(DATA_DIR, 'manual_cookie.txt'), cookie);
+      fs.writeFileSync(cookiePath, cookie); // Using the defined cookiePath
       res.json({ status: 'success', message: 'Cookie guardada exitosamente.' });
     } else {
       res.status(400).json({ status: 'error', message: 'Cookie vacía.' });
@@ -55,7 +56,7 @@ app.post('/api/auth/cookie', async (req, res) => {
 // Trigger scan
 app.post('/api/scan', async (req, res) => {
   try {
-    await scanner.init();
+    await scanner.init(cookiePath); // Pass cookiePath to scanner.init
     const licitaciones = await scanner.scrapeLicitaciones();
     const comprasAgiles = await scanner.scrapeComprasAgiles();
     

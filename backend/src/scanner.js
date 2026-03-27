@@ -16,7 +16,7 @@ class MercadoPublicoScanner {
     this.page = null;
   }
 
-  async init() {
+  async init(externalCookiePath) {
     const launchOptions = {
       headless: true,
       userDataDir: this.userDataDir,
@@ -38,7 +38,7 @@ class MercadoPublicoScanner {
     this.page = pages[0] || (await this.browser.newPage());
 
     // Inject manual cookie if it exists
-    const cookiePath = path.join(__dirname, '../data/manual_cookie.txt');
+    const cookiePath = externalCookiePath || path.join(__dirname, '../data/manual_cookie.txt');
     if (fs.existsSync(cookiePath)) {
       const cookieStr = fs.readFileSync(cookiePath, 'utf8');
       await this.page.setExtraHTTPHeaders({ 'Cookie': cookieStr });

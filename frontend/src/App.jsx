@@ -49,10 +49,19 @@ function App() {
     setStatus('Escaneando Mercado Público...')
     try {
       const res = await fetch('/api/scan', { method: 'POST' })
-      const data = await res.json()
+      const text = await res.text()
+      let data = {};
+      try {
+        data = JSON.parse(text);
+      } catch (e) {
+        throw new Error(`Respuesta no es JSON: ${text.substring(0, 100)}...`);
+      }
+      
       if (data.status === 'success') {
         setStatus(`Escaneo completado: ${data.summary.licitaciones} licitaciones, ${data.summary.compras} compras ágiles.`)
         fetchTenders()
+      } else {
+        setStatus(`Error: ${data.message || 'Error desconocido'}`);
       }
     } catch (err) {
       setStatus('Error al escanear: ' + err.message)
