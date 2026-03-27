@@ -108,14 +108,42 @@ class MercadoPublicoScanner {
     try {
       if (!this.page) await this.init();
       
-      console.log('Navegando a Compras Ágiles...');
-      await this.page.goto('https://www.mercadopublico.cl/Portal/Seleccion/ComprasAgiles.aspx', { waitUntil: 'domcontentloaded' }).catch(() => null);
+      console.log('Navegando a la nueva plataforma de Compras Ágiles...');
+      // Usamos el buscador moderno que es más estable
+      await this.page.goto('https://buscador.mercadopublico.cl/compra-agil', { waitUntil: 'domcontentloaded' });
       
-      const results = [
-        { descripcion: 'Compra Ágil 1 - Computadores para la Salud', organismo: 'Servicio de Salud Metropolitano' },
-        { descripcion: 'Compra Ágil 2 - Mobiliario Escolar', organismo: 'Municipalidad de Providencia' }
-      ];
+      // Esperamos a que carguen los resultados (grilla de Material UI)
+      await this.page.waitForSelector('h4', { timeout: 20000 }).catch(() => null);
+      
+      const results = await this.page.evaluate(() => {
+        // Buscamos los contenedores de las tarjetas
+        // En la nueva plataforma, las tarjetas suelen estar dentro de un MuiGrid-item
+        // Buscamos elementos que contengan un H4 (título) y un link de detalle
+        const cards = Array.from(document.querySelectorAll('div')).filter(el => 
+          el.querySelector('h4') && el.innerText.includes('Revisar detalle')
+        );
 
+        return cards.map(card => {
+          const titleEl = card.querySelector('h4');
+          const textContent = card.innerText || '';
+          
+          // El ID suele estar en un span arriba del H4
+          // Intentamos extraerlo con regex si no hay selector claro
+          const idMatch = textContent.match(/[0-9]+-[0-9]+-[A-Z0-9]+/);
+          
+          // El organismo suele estar en la parte inferior
+          // Buscamos líneas que no sean el título ni el ID
+          const lines = textContent.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+          
+          return {
+            id: idMatch ? idMatch[0] : 'ID Pendiente',
+            descripcion: titleEl ? titleEl.innerText : 'Sin descripción',
+            organismo: lines.find(l => l.toUpperCase() === l && l.length > 10) || 'Organismo Detectado'
+          };
+        }).filter(item => item.descripcion !== 'Sin descripción');
+      });
+
+      console.log(`Encontradas ${results.length} compras ágiles reales.`);
       return results;
     } catch (error) {
       console.error('Error scraping compras agiles:', error);

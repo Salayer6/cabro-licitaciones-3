@@ -198,6 +198,16 @@ function App() {
           ) : (
             comprasAgiles.map((c, index) => (
               <div key={index} className="glass card card-hover">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <span 
+                    className="badge badge-green" 
+                    style={{ marginBottom: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}
+                    onClick={() => copyToClipboard(c.id)}
+                    title="Clic para copiar ID"
+                  >
+                    {c.id || 'N/A'} 📋
+                  </span>
+                </div>
                 <h3 style={{ marginBottom: '0.5rem', fontSize: '1.05rem' }}>{c.descripcion || 'Sin descripción'}</h3>
                 <p style={{ color: 'var(--text-alt)', fontSize: '0.8rem' }}>
                    <span role="img" aria-label="org">🏢</span> {c.organismo}
