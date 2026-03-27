@@ -106,7 +106,7 @@
     "wrappy": "^1.0.2"
   },
   "scripts": {
-    "build": "cd frontend && npm install && npm run build && cp -r dist ../dist",
+    "build": "cd frontend && npm install && npm run build && cp -r dist ../public",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
