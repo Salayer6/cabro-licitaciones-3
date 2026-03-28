@@ -76,24 +76,52 @@ class MercadoPublicoScanner {
     try {
       if (!this.page) await this.init();
       
-      console.log('Navegando a Buscar Licitación...');
-      await this.page.goto('https://www.mercadopublico.cl/Portal/Seleccion/BuscarLicitacion.aspx', { waitUntil: 'domcontentloaded' });
+      console.log('Navegando a Buscar Licitación (Nueva URL)...');
+      await this.page.goto('https://www.mercadopublico.cl/Home/BusquedaLicitacion', { waitUntil: 'networkidle2' });
       
-      await this.page.waitForSelector('.c-tabla-compras', { timeout: 15000 }).catch(() => null);
+      // Wait for at least one tender card or the main results container
+      await this.page.waitForSelector('h2', { timeout: 20000 }).catch(() => null);
+      
+      // Scroll a bit to trigger any lazy loading if necessary
+      await this.page.evaluate(() => window.scrollBy(0, 500));
+      await delay(1000);
 
       const results = await this.page.evaluate(() => {
-        const rows = Array.from(document.querySelectorAll('.c-tabla-compras tbody tr'));
-        return rows.map(row => {
-          const cells = row.querySelectorAll('td');
-          if (cells.length < 5) return null;
+        // Find elements that look like tender cards
+        // They typically contain "ID Licitación:"
+        const cards = Array.from(document.querySelectorAll('div')).filter(el => 
+          el.innerText && el.innerText.includes('ID Licitación:') && el.querySelector('h2')
+        );
+
+        return cards.map(card => {
+          const titleEl = card.querySelector('h2');
+          const textContent = card.innerText || '';
+          
+          // Improved ID extraction
+          const idMatch = textContent.match(/ID Licitación:\s*([A-Z0-9-]+)/i);
+          const id = idMatch ? idMatch[1] : 'N/A';
+
+          // Extract organism - usually in a specific div or following a pattern
+          // We can look for common markers or just the text below the title
+          const lines = textContent.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+          const organism = lines.find(l => l.toUpperCase() === l && l.length > 5 && !l.includes('ID ')) || 'Organismo por detectar';
+
+          // Extract monto
+          const montoMatch = textContent.match(/monto[^$]*(\$[\s0-9.]+)/i);
+          const monto = montoMatch ? montoMatch[1] : 'Ver en ficha';
+
+          // Extract fecha cierre
+          const fechaMatch = textContent.match(/cierre:\s*([0-9/:\s]+)/i);
+          const fechaCierre = fechaMatch ? fechaMatch[1] : 'N/A';
+
           return {
-            id: cells[0]?.innerText?.trim(),
-            nombre: cells[1]?.innerText?.trim(),
-            organismo: cells[2]?.innerText?.trim(),
-            monto: cells[3]?.innerText?.trim() || 'Ver en ficha',
-            fechaCierre: cells[4]?.innerText?.trim()
+            id,
+            nombre: titleEl ? titleEl.innerText.trim() : 'Sin nombre',
+            organismo,
+            monto,
+            fechaCierre
           };
-        }).filter(item => item !== null);
+        }).filter(item => item.id !== 'N/A');
       });
 
       console.log(`Encontradas ${results.length} licitaciones.`);
@@ -109,38 +137,39 @@ class MercadoPublicoScanner {
       if (!this.page) await this.init();
       
       console.log('Navegando a la nueva plataforma de Compras Ágiles...');
-      // Usamos el buscador moderno que es más estable
-      await this.page.goto('https://buscador.mercadopublico.cl/compra-agil', { waitUntil: 'domcontentloaded' });
+      await this.page.goto('https://buscador.mercadopublico.cl/compra-agil', { waitUntil: 'networkidle2' });
       
-      // Esperamos a que carguen los resultados (grilla de Material UI)
-      await this.page.waitForSelector('h4', { timeout: 20000 }).catch(() => null);
+      // Esperamos a que carguen los resultados (grilla dinámica)
+      await this.page.waitForSelector('h4, h5', { timeout: 25000 }).catch(() => null);
       
+      // Scroll para asegurar carga de contenido dinámico
+      await this.page.evaluate(() => window.scrollBy(0, 800));
+      await delay(2000);
+
       const results = await this.page.evaluate(() => {
-        // Buscamos los contenedores de las tarjetas
-        // En la nueva plataforma, las tarjetas suelen estar dentro de un MuiGrid-item
-        // Buscamos elementos que contengan un H4 (título) y un link de detalle
+        // En Compra Ágil actual, las tarjetas suelen tener un h4 o h5 como título
+        // y un ID con formato COTXX
         const cards = Array.from(document.querySelectorAll('div')).filter(el => 
-          el.querySelector('h4') && el.innerText.includes('Revisar detalle')
+          (el.querySelector('h4') || el.querySelector('h5')) && el.innerText.includes('COT')
         );
 
         return cards.map(card => {
-          const titleEl = card.querySelector('h4');
+          const titleEl = card.querySelector('h4') || card.querySelector('h5');
           const textContent = card.innerText || '';
           
-          // El ID suele estar en un span arriba del H4
-          // Intentamos extraerlo con regex si no hay selector claro
+          // ID Pattern: XXXX-XXX-COTXX
           const idMatch = textContent.match(/[0-9]+-[0-9]+-[A-Z0-9]+/);
           
-          // El organismo suele estar en la parte inferior
-          // Buscamos líneas que no sean el título ni el ID
-          const lines = textContent.split('\n').map(l => l.trim()).filter(l => l.length > 2);
-          
+          // El organismo suele estar en negrita o al final de la tarjeta
+          const strongs = Array.from(card.querySelectorAll('strong'));
+          const organism = strongs.length > 0 ? strongs[0].innerText : 'Organismo Detectado';
+
           return {
             id: idMatch ? idMatch[0] : 'ID Pendiente',
-            descripcion: titleEl ? titleEl.innerText : 'Sin descripción',
-            organismo: lines.find(l => l.toUpperCase() === l && l.length > 10) || 'Organismo Detectado'
+            descripcion: titleEl ? titleEl.innerText.trim() : 'Sin descripción',
+            organismo: organism.trim()
           };
-        }).filter(item => item.descripcion !== 'Sin descripción');
+        }).filter(item => item.descripcion !== 'Sin descripción' && item.id !== 'ID Pendiente');
       });
 
       console.log(`Encontradas ${results.length} compras ágiles reales.`);
