@@ -1,14 +1,24 @@
+// Cargar variables de entorno desde .env (debe ir primero)
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const MercadoPublicoScanner = require('./scanner');
+// Rutas del servicio de API oficial de Mercado Público
+const mercadoPublicoRoutes = require('./mercadoPublicoRoutes');
 
 const app = express();
 const port = 3001;
 
 app.use(cors());
 app.use(express.json());
+
+// ── API oficial de Mercado Público (api.mercadopublico.cl) ──────────────────
+// Todos los endpoints de este router se sirven bajo /api/mp
+// Requiere la variable de entorno MERCADO_PUBLICO_TICKET configurada en .env
+app.use('/api/mp', mercadoPublicoRoutes);
 
 const scanner = new MercadoPublicoScanner();
 const DATA_DIR = path.join(__dirname, '../data');

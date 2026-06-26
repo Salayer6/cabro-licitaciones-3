@@ -3,8 +3,10 @@ import { useState, useEffect } from 'react'
 function App() {
   const [licitaciones, setLicitaciones] = useState([])
   const [comprasAgiles, setComprasAgiles] = useState([])
+  const [licitacionesApiOficial, setLicitacionesApiOficial] = useState([])
   const [loading, setLoading] = useState(false)
   const [scanning, setScanning] = useState(false)
+  const [loadingApi, setLoadingApi] = useState(false)
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [cookieInput, setCookieInput] = useState('')
   const [status, setStatus] = useState('')
@@ -20,6 +22,26 @@ function App() {
       setComprasAgiles(dataCompras)
     } catch (err) {
       console.error('Error fetching data:', err)
+    }
+  }
+
+  const fetchApiOficialHoy = async () => {
+    setLoadingApi(true)
+    setStatus('Cargando licitaciones de hoy desde la API Oficial...')
+    try {
+      const res = await fetch('/api/mp/licitaciones/hoy')
+      const data = await res.json()
+      if (data.status === 'success') {
+        setLicitacionesApiOficial(data.Listado || [])
+        setStatus(`API Oficial: ${data.Cantidad} licitaciones obtenidas.`)
+        setTimeout(() => setStatus(''), 3000)
+      } else {
+        setStatus(`Error API Oficial: ${data.mensaje}`)
+      }
+    } catch (err) {
+      setStatus('Error al conectar con la API Oficial: ' + err.message)
+    } finally {
+      setLoadingApi(false)
     }
   }
 
@@ -118,6 +140,10 @@ function App() {
                 {scanning && <div className="loading-spinner"></div>}
                 Escanear Ahora
               </button>
+              <button className="btn btn-secondary" style={{ background: 'rgba(59, 130, 246, 0.2)', borderColor: 'var(--primary)' }} onClick={fetchApiOficialHoy} disabled={loadingApi}>
+                {loadingApi && <div className="loading-spinner"></div>}
+                API Oficial (Hoy)
+              </button>
             </>
           )}
         </div>
@@ -179,6 +205,45 @@ function App() {
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                   <span style={{ fontSize: '0.9rem', color: 'var(--success)', fontWeight: '700' }}>{l.monto || '$0'}</span>
                   <span style={{ fontSize: '0.7rem', color: 'var(--text-alt)' }}>Cierra: {l.fechaCierre || 'N/A'}</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        <div className="section-title" style={{ marginTop: '4rem' }}>
+          <h2>Licitaciones Oficiales (API Hoy)</h2>
+          <span className="badge badge-orange">{licitacionesApiOficial.length}</span>
+        </div>
+
+        <div className="grid">
+          {licitacionesApiOficial.length === 0 ? (
+            <div className="glass card" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem' }}>
+              <p style={{ color: 'var(--text-alt)' }}>No has cargado licitaciones de la API oficial.</p>
+            </div>
+          ) : (
+            licitacionesApiOficial.map((l, index) => (
+              <div key={index} className="glass card card-hover">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <span 
+                    className="badge badge-blue" 
+                    style={{ marginBottom: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}
+                    onClick={() => copyToClipboard(l.CodigoLicitacion)}
+                    title="Clic para copiar ID"
+                  >
+                    {l.CodigoLicitacion || 'N/A'} 📋
+                  </span>
+                  <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>API</span>
+                </div>
+                <h3 style={{ marginBottom: '0.5rem', fontSize: '1.05rem', lineHeight: '1.3' }}>{l.Nombre || 'Licitación sin nombre'}</h3>
+                <p style={{ color: 'var(--text-alt)', fontSize: '0.8rem', marginBottom: '1.5rem', display: 'flex', gap: '0.4rem' }}>
+                  <span role="img" aria-label="org">🏢</span> {l.Organismo}
+                </p>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
+                  <span style={{ fontSize: '0.9rem', color: 'var(--success)', fontWeight: '700' }}>
+                    {l.MontoPesos ? `$${Number(l.MontoPesos).toLocaleString('es-CL')}` : 'Sin monto'}
+                  </span>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-alt)' }}>Cierra: {l.FechaCierre ? new Date(l.FechaCierre).toLocaleDateString('es-CL') : 'N/A'}</span>
                 </div>
               </div>
             ))
