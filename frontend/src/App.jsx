@@ -1,287 +1,342 @@
 import { useState, useEffect } from 'react'
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CONSTANTES
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Mapa de códigos de estado de la API a etiquetas legibles
+const ESTADO_LABEL = {
+  '5': 'Publicada',
+  '6': 'Cerrada',
+  '7': 'Desierta',
+  '8': 'Adjudicada',
+  '18': 'Revocada',
+}
+
+const ESTADO_COLOR = {
+  '5': { bg: 'rgba(16, 185, 129, 0.15)', color: '#34d399' },
+  '6': { bg: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' },
+  '7': { bg: 'rgba(239, 68, 68, 0.15)', color: '#f87171' },
+  '8': { bg: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' },
+  '18': { bg: 'rgba(156, 163, 175, 0.15)', color: '#9ca3af' },
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+
+function formatMonto(monto) {
+  if (!monto) return null
+  const n = Number(monto)
+  if (isNaN(n) || n === 0) return null
+  return `$${n.toLocaleString('es-CL')}`
+}
+
+function formatFecha(fechaStr) {
+  if (!fechaStr) return 'N/A'
+  try {
+    return new Date(fechaStr).toLocaleDateString('es-CL', {
+      day: '2-digit', month: '2-digit', year: 'numeric'
+    })
+  } catch {
+    return fechaStr
+  }
+}
+
+function hoyFormatted() {
+  return new Date().toLocaleDateString('es-CL', {
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+  })
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTE BADGE DE ESTADO
+// ─────────────────────────────────────────────────────────────────────────────
+
+function EstadoBadge({ codigo }) {
+  const label = ESTADO_LABEL[String(codigo)] || `Estado ${codigo}`
+  const style = ESTADO_COLOR[String(codigo)] || { bg: 'rgba(139,92,246,0.15)', color: '#a78bfa' }
+  return (
+    <span style={{
+      padding: '0.2rem 0.6rem',
+      borderRadius: '999px',
+      fontSize: '0.7rem',
+      fontWeight: 700,
+      textTransform: 'uppercase',
+      letterSpacing: '0.05em',
+      background: style.bg,
+      color: style.color,
+    }}>
+      {label}
+    </span>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTE TARJETA DE LICITACIÓN
+// ─────────────────────────────────────────────────────────────────────────────
+
+function LicitacionCard({ licitacion, onCopyId }) {
+  const l = licitacion
+  const monto = formatMonto(l.MontoPesos)
+
+  return (
+    <div className="glass card card-hover">
+      {/* Fila superior: ID copiable + estado */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+        <span
+          className="badge badge-orange"
+          style={{ cursor: 'pointer', fontWeight: 'bold', fontSize: '0.72rem' }}
+          onClick={() => onCopyId(l.CodigoLicitacion)}
+          title="Clic para copiar ID"
+        >
+          {l.CodigoLicitacion || 'N/A'} 📋
+        </span>
+        <EstadoBadge codigo={l.CodigoEstado} />
+      </div>
+
+      {/* Nombre */}
+      <h3 style={{ marginBottom: '0.5rem', fontSize: '1rem', lineHeight: '1.4', fontWeight: 600 }}>
+        {l.Nombre || 'Sin nombre'}
+      </h3>
+
+      {/* Organismo */}
+      <p style={{ color: 'var(--text-alt)', fontSize: '0.8rem', marginBottom: '1rem', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+        <span>🏢</span> {l.Organismo || '—'}
+      </p>
+
+      {/* Tipo de licitación */}
+      {l.Tipo && (
+        <p style={{ color: 'var(--text-alt)', fontSize: '0.75rem', marginBottom: '1rem' }}>
+          <strong style={{ color: 'var(--text-main)' }}>Tipo:</strong> {l.Tipo}
+        </p>
+      )}
+
+      {/* Footer: monto y fecha de cierre */}
+      <div style={{
+        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        marginTop: 'auto', paddingTop: '1rem',
+        borderTop: '1px solid rgba(255,255,255,0.06)'
+      }}>
+        <span style={{ fontSize: '0.9rem', color: 'var(--success)', fontWeight: 700 }}>
+          {monto || <span style={{ color: 'var(--text-alt)', fontWeight: 400 }}>Sin monto</span>}
+        </span>
+        <div style={{ textAlign: 'right' }}>
+          <p style={{ fontSize: '0.65rem', color: 'var(--text-alt)', marginBottom: '0.1rem' }}>Cierre</p>
+          <p style={{ fontSize: '0.75rem', color: 'var(--text-main)' }}>{formatFecha(l.FechaCierre)}</p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTE PRINCIPAL
+// ─────────────────────────────────────────────────────────────────────────────
+
 function App() {
   const [licitaciones, setLicitaciones] = useState([])
-  const [comprasAgiles, setComprasAgiles] = useState([])
-  const [licitacionesApiOficial, setLicitacionesApiOficial] = useState([])
   const [loading, setLoading] = useState(false)
-  const [scanning, setScanning] = useState(false)
-  const [loadingApi, setLoadingApi] = useState(false)
-  const [showAuthModal, setShowAuthModal] = useState(false)
-  const [cookieInput, setCookieInput] = useState('')
-  const [status, setStatus] = useState('')
+  const [error, setError] = useState(null)
+  const [cantidad, setCantidad] = useState(0)
+  const [toast, setToast] = useState(null)
+  const [busqueda, setBusqueda] = useState('')
 
-  const fetchTenders = async () => {
-    try {
-      const resLicitaciones = await fetch('/api/licitaciones')
-      const dataLicitaciones = await resLicitaciones.json()
-      setLicitaciones(dataLicitaciones)
+  // Carga automática al montar la app
+  useEffect(() => {
+    cargarLicitacionesHoy()
+  }, [])
 
-      const resCompras = await fetch('/api/compras-agiles')
-      const dataCompras = await resCompras.json()
-      setComprasAgiles(dataCompras)
-    } catch (err) {
-      console.error('Error fetching data:', err)
-    }
+  const mostrarToast = (msg, tipo = 'info') => {
+    setToast({ msg, tipo })
+    setTimeout(() => setToast(null), 3000)
   }
 
-  const fetchApiOficialHoy = async () => {
-    setLoadingApi(true)
-    setStatus('Cargando licitaciones de hoy desde la API Oficial...')
+  // ── Fetch principal: licitaciones de hoy desde la API Oficial ──────────────
+  const cargarLicitacionesHoy = async () => {
+    setLoading(true)
+    setError(null)
     try {
       const res = await fetch('/api/mp/licitaciones/hoy')
       const data = await res.json()
-      if (data.status === 'success') {
-        setLicitacionesApiOficial(data.Listado || [])
-        setStatus(`API Oficial: ${data.Cantidad} licitaciones obtenidas.`)
-        setTimeout(() => setStatus(''), 3000)
-      } else {
-        setStatus(`Error API Oficial: ${data.mensaje}`)
-      }
-    } catch (err) {
-      setStatus('Error al conectar con la API Oficial: ' + err.message)
-    } finally {
-      setLoadingApi(false)
-    }
-  }
 
-  useEffect(() => {
-    fetchTenders()
-  }, [])
-
-  const startLogin = async () => {
-    setLoading(true)
-    setStatus('Iniciando navegador para ClaveÚnica...')
-    try {
-      const res = await fetch('/api/auth/login', { method: 'POST' })
-      const data = await res.json()
-      if (data.status === 'success') {
-        setStatus('Autenticación guardada con éxito.')
-        setTimeout(() => setStatus(''), 3000)
+      if (!res.ok || data.status === 'error') {
+        throw new Error(data.mensaje || `Error HTTP ${res.status}`)
       }
+
+      setLicitaciones(data.Listado || [])
+      setCantidad(data.Cantidad || 0)
+      mostrarToast(`✅ ${data.Cantidad} licitaciones cargadas`, 'success')
     } catch (err) {
-      setStatus('Error al autenticar: ' + err.message)
+      setError(err.message)
     } finally {
       setLoading(false)
     }
   }
 
-  const startScan = async () => {
-    setScanning(true)
-    setStatus('Escaneando Mercado Público...')
-    try {
-      const res = await fetch('/api/scan', { method: 'POST' })
-      const text = await res.text()
-      let data = {};
-      try {
-        data = JSON.parse(text);
-      } catch (e) {
-        throw new Error(`Respuesta no es JSON: ${text.substring(0, 100)}...`);
-      }
-      
-      if (data.status === 'success') {
-        setStatus(`Escaneo completado: ${data.summary.licitaciones} licitaciones, ${data.summary.compras} compras ágiles.`)
-        fetchTenders()
-      } else {
-        setStatus(`Error: ${data.message || 'Error desconocido'}`);
-      }
-    } catch (err) {
-      setStatus('Error al escanear: ' + err.message)
-    } finally {
-      setScanning(false)
-    }
+  // ── Copiar ID al portapapeles ──────────────────────────────────────────────
+  const copiarId = (id) => {
+    if (!id) return
+    navigator.clipboard.writeText(id)
+    mostrarToast(`📋 ID copiado: ${id}`, 'copy')
   }
 
-  const copyToClipboard = (text) => {
-    if (!text) return;
-    navigator.clipboard.writeText(text);
-    const prevStatus = status;
-    setStatus(`📋 ID Copiado: ${text}`);
-    setTimeout(() => setStatus(prevStatus), 2000);
-  }
+  // ── Filtrado por búsqueda ──────────────────────────────────────────────────
+  const licitacionesFiltradas = licitaciones.filter(l => {
+    if (!busqueda.trim()) return true
+    const q = busqueda.toLowerCase()
+    return (
+      (l.Nombre || '').toLowerCase().includes(q) ||
+      (l.Organismo || '').toLowerCase().includes(q) ||
+      (l.CodigoLicitacion || '').toLowerCase().includes(q)
+    )
+  })
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // RENDER
+  // ─────────────────────────────────────────────────────────────────────────
 
   return (
     <div className="container">
+
+      {/* ── HEADER ── */}
       <header>
-        <div className="logo">Nata de Mercado Público</div>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          {showAuthModal ? (
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input 
-                type="text" 
-                placeholder="Pega tu cookie aquí..." 
-                style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border)', background: 'var(--bg-dark)', color: 'white', width: '250px' }}
-                value={cookieInput}
-                onChange={(e) => setCookieInput(e.target.value)}
-                id="cookie-input"
-              />
-              <button className="btn btn-secondary" onClick={async () => {
-                const val = cookieInput;
-                if(!val) return;
-                setStatus('Guardando cookie...');
-                try {
-                  await fetch('/api/auth/cookie', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ cookie: val })
-                  });
-                  setStatus('Cookie guardada con éxito.');
-                  setShowAuthModal(false);
-                } catch(e) { setStatus('Error'); }
-              }}>Guardar Cookie</button>
-            </div>
-          ) : (
-            <>
-              <button className="btn btn-secondary" onClick={() => setShowAuthModal(true)} disabled={loading}>
-                {loading && <div className="loading-spinner"></div>}
-                Inyectar Sesión Manual
-              </button>
-              <button className="btn btn-primary" onClick={startScan} disabled={scanning}>
-                {scanning && <div className="loading-spinner"></div>}
-                Escanear Ahora
-              </button>
-              <button className="btn btn-secondary" style={{ background: 'rgba(59, 130, 246, 0.2)', borderColor: 'var(--primary)' }} onClick={fetchApiOficialHoy} disabled={loadingApi}>
-                {loadingApi && <div className="loading-spinner"></div>}
-                API Oficial (Hoy)
-              </button>
-            </>
-          )}
+        <div>
+          <div className="logo">Nata de Mercado Público</div>
+          <p style={{ color: 'var(--text-alt)', fontSize: '0.8rem', marginTop: '0.25rem', textTransform: 'capitalize' }}>
+            {hoyFormatted()}
+          </p>
+        </div>
+
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          {/* Buscador rápido */}
+          <input
+            type="text"
+            placeholder="Buscar por nombre, organismo o ID..."
+            value={busqueda}
+            onChange={e => setBusqueda(e.target.value)}
+            style={{
+              padding: '0.6rem 1rem',
+              borderRadius: '10px',
+              border: '1px solid var(--border)',
+              background: 'rgba(30,41,59,0.8)',
+              color: 'white',
+              width: '260px',
+              fontSize: '0.85rem',
+              outline: 'none',
+            }}
+          />
+          {/* Botón actualizar */}
+          <button
+            className="btn btn-primary"
+            onClick={cargarLicitacionesHoy}
+            disabled={loading}
+            id="btn-actualizar"
+          >
+            {loading
+              ? <><div className="loading-spinner"></div> Cargando...</>
+              : '🔄 Actualizar'}
+          </button>
         </div>
       </header>
 
-      {status && (
-        <div className="glass card status-fixed" style={{ 
-          marginBottom: '2rem', 
-          borderLeft: '4px solid var(--primary)', 
-          padding: '1rem 1.5rem',
-          position: status.includes('Copiado') ? 'fixed' : 'relative',
-          top: status.includes('Copiado') ? '2rem' : 'auto',
-          right: status.includes('Copiado') ? '2rem' : 'auto',
+      {/* ── TOAST ── */}
+      {toast && (
+        <div style={{
+          position: 'fixed',
+          top: '1.5rem',
+          right: '1.5rem',
           zIndex: 1000,
-          boxShadow: status.includes('Copiado') ? '0 10px 25px rgba(0,0,0,0.5)' : 'none'
+          padding: '0.9rem 1.4rem',
+          borderRadius: '12px',
+          background: toast.tipo === 'success' ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.15)',
+          border: `1px solid ${toast.tipo === 'success' ? 'rgba(52,211,153,0.4)' : 'rgba(139,92,246,0.4)'}`,
+          color: 'var(--text-main)',
+          fontSize: '0.85rem',
+          fontWeight: 500,
+          backdropFilter: 'blur(12px)',
+          animation: 'slideIn 0.3s ease',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
         }}>
-          <p style={{ color: 'var(--text-main)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span role="img" aria-label="info">{status.includes('Copiado') ? '✅' : 'ℹ️'}</span> {status}
-          </p>
-        </div>
-      )}
-      
-      {!showAuthModal && (
-        <div className="glass card" style={{ marginBottom: '2rem', padding: '1rem', background: 'rgba(245, 158, 11, 0.1)' }}>
-          <p style={{ fontSize: '0.85rem', color: '#fbbf24' }}>
-            <strong>Aviso Anti-Bot:</strong> Mercado Público bloquea automatización. Copia la cookie de tu navegador e inyéctala manualmente.
-          </p>
+          {toast.msg}
         </div>
       )}
 
-      <main>
-        <div className="section-title">
-          <h2>Licitaciones Vigentes</h2>
-          <span className="badge badge-blue">{licitaciones.length}</span>
+      {/* ── ERROR ── */}
+      {error && (
+        <div className="glass card" style={{
+          marginBottom: '2rem',
+          borderLeft: '4px solid #f87171',
+          padding: '1rem 1.5rem',
+          background: 'rgba(239,68,68,0.08)',
+        }}>
+          <p style={{ color: '#f87171', fontWeight: 600, marginBottom: '0.25rem' }}>⚠️ Error al cargar datos</p>
+          <p style={{ color: 'var(--text-alt)', fontSize: '0.85rem' }}>{error}</p>
+          {error.includes('ticket') || error.includes('401') ? (
+            <p style={{ color: '#fbbf24', fontSize: '0.8rem', marginTop: '0.5rem' }}>
+              💡 Verifica que <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>MERCADO_PUBLICO_TICKET</code> esté configurado en el archivo <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>.env</code> del backend.
+            </p>
+          ) : null}
         </div>
-        
+      )}
+
+      {/* ── ESTADO DE CARGA: SKELETON ── */}
+      {loading && licitaciones.length === 0 && (
         <div className="grid">
-          {licitaciones.length === 0 ? (
-            <div className="glass card" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem' }}>
-              <p style={{ color: 'var(--text-alt)' }}>No hay licitaciones escaneadas aún.</p>
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="glass card" style={{ height: '180px', opacity: 0.5, animation: 'pulse 1.5s ease infinite' }}>
+              <div style={{ height: '12px', background: 'rgba(255,255,255,0.1)', borderRadius: '6px', marginBottom: '1rem', width: '40%' }} />
+              <div style={{ height: '16px', background: 'rgba(255,255,255,0.08)', borderRadius: '6px', marginBottom: '0.5rem' }} />
+              <div style={{ height: '16px', background: 'rgba(255,255,255,0.06)', borderRadius: '6px', width: '70%' }} />
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* ── CONTENIDO PRINCIPAL ── */}
+      {!loading || licitaciones.length > 0 ? (
+        <main>
+          {/* Título de sección con conteo */}
+          <div className="section-title">
+            <h2>Licitaciones de Hoy</h2>
+            <span className="badge badge-blue">
+              {busqueda ? `${licitacionesFiltradas.length} / ${cantidad}` : cantidad}
+            </span>
+            {busqueda && licitacionesFiltradas.length === 0 && (
+              <span style={{ color: 'var(--text-alt)', fontSize: '0.85rem' }}>— Sin resultados para "{busqueda}"</span>
+            )}
+          </div>
+
+          {/* Grid de tarjetas */}
+          {licitacionesFiltradas.length === 0 && !loading ? (
+            <div className="glass card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+              <p style={{ fontSize: '2rem', marginBottom: '1rem' }}>📭</p>
+              <p style={{ color: 'var(--text-alt)', fontSize: '0.95rem' }}>
+                {busqueda
+                  ? 'No se encontraron licitaciones con ese criterio.'
+                  : 'No hay licitaciones publicadas hoy aún. Intenta actualizar más tarde.'}
+              </p>
             </div>
           ) : (
-            licitaciones.map((l, index) => (
-              <div key={index} className="glass card card-hover">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <span 
-                    className="badge badge-orange" 
-                    style={{ marginBottom: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}
-                    onClick={() => copyToClipboard(l.id)}
-                    title="Clic para copiar ID"
-                  >
-                    {l.id || 'N/A'} 📋
-                  </span>
-                </div>
-                <h3 style={{ marginBottom: '0.5rem', fontSize: '1.05rem', lineHeight: '1.3' }}>{l.nombre || 'Licitación sin nombre'}</h3>
-                <p style={{ color: 'var(--text-alt)', fontSize: '0.8rem', marginBottom: '1.5rem', display: 'flex', gap: '0.4rem' }}>
-                  <span role="img" aria-label="org">🏢</span> {l.organismo}
-                </p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--success)', fontWeight: '700' }}>{l.monto || '$0'}</span>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-alt)' }}>Cierra: {l.fechaCierre || 'N/A'}</span>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-
-        <div className="section-title" style={{ marginTop: '4rem' }}>
-          <h2>Licitaciones Oficiales (API Hoy)</h2>
-          <span className="badge badge-orange">{licitacionesApiOficial.length}</span>
-        </div>
-
-        <div className="grid">
-          {licitacionesApiOficial.length === 0 ? (
-            <div className="glass card" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem' }}>
-              <p style={{ color: 'var(--text-alt)' }}>No has cargado licitaciones de la API oficial.</p>
+            <div className="grid">
+              {licitacionesFiltradas.map((l, i) => (
+                <LicitacionCard key={l.CodigoLicitacion || i} licitacion={l} onCopyId={copiarId} />
+              ))}
             </div>
-          ) : (
-            licitacionesApiOficial.map((l, index) => (
-              <div key={index} className="glass card card-hover">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <span 
-                    className="badge badge-blue" 
-                    style={{ marginBottom: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}
-                    onClick={() => copyToClipboard(l.CodigoLicitacion)}
-                    title="Clic para copiar ID"
-                  >
-                    {l.CodigoLicitacion || 'N/A'} 📋
-                  </span>
-                  <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.2)', color: '#60a5fa' }}>API</span>
-                </div>
-                <h3 style={{ marginBottom: '0.5rem', fontSize: '1.05rem', lineHeight: '1.3' }}>{l.Nombre || 'Licitación sin nombre'}</h3>
-                <p style={{ color: 'var(--text-alt)', fontSize: '0.8rem', marginBottom: '1.5rem', display: 'flex', gap: '0.4rem' }}>
-                  <span role="img" aria-label="org">🏢</span> {l.Organismo}
-                </p>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                  <span style={{ fontSize: '0.9rem', color: 'var(--success)', fontWeight: '700' }}>
-                    {l.MontoPesos ? `$${Number(l.MontoPesos).toLocaleString('es-CL')}` : 'Sin monto'}
-                  </span>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-alt)' }}>Cierra: {l.FechaCierre ? new Date(l.FechaCierre).toLocaleDateString('es-CL') : 'N/A'}</span>
-                </div>
-              </div>
-            ))
           )}
-        </div>
+        </main>
+      ) : null}
 
-        <div className="section-title" style={{ marginTop: '4rem' }}>
-          <h2>Compras Ágiles</h2>
-          <span className="badge badge-green">{comprasAgiles.length}</span>
-        </div>
-
-        <div className="grid">
-          {comprasAgiles.length === 0 ? (
-            <div className="glass card" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '3rem' }}>
-              <p style={{ color: 'var(--text-alt)' }}>No hay compras ágiles detectadas.</p>
-            </div>
-          ) : (
-            comprasAgiles.map((c, index) => (
-              <div key={index} className="glass card card-hover">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                  <span 
-                    className="badge badge-green" 
-                    style={{ marginBottom: '0.5rem', cursor: 'pointer', fontWeight: 'bold' }}
-                    onClick={() => copyToClipboard(c.id)}
-                    title="Clic para copiar ID"
-                  >
-                    {c.id || 'N/A'} 📋
-                  </span>
-                </div>
-                <h3 style={{ marginBottom: '0.5rem', fontSize: '1.05rem' }}>{c.descripcion || 'Sin descripción'}</h3>
-                <p style={{ color: 'var(--text-alt)', fontSize: '0.8rem' }}>
-                   <span role="img" aria-label="org">🏢</span> {c.organismo}
-                </p>
-              </div>
-            ))
-          )}
-        </div>
-      </main>
+      {/* ── FOOTER ── */}
+      <footer style={{ marginTop: '4rem', paddingTop: '2rem', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
+        <p style={{ color: 'var(--text-alt)', fontSize: '0.75rem' }}>
+          Datos obtenidos desde{' '}
+          <a href="https://api.mercadopublico.cl" target="_blank" rel="noreferrer" style={{ color: 'var(--primary)', textDecoration: 'none' }}>
+            api.mercadopublico.cl
+          </a>
+          {' '}· Nata de Mercado Público
+        </p>
+      </footer>
     </div>
   )
 }
