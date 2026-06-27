@@ -1,24 +1,26 @@
 import { useState, useEffect } from 'react'
+import AnalyticsView from './AnalyticsView.jsx'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // CONSTANTES
 // ─────────────────────────────────────────────────────────────────────────────
 
-// Mapa de códigos de estado de la API a etiquetas legibles
-const ESTADO_LABEL = {
-  '5': 'Publicada',
-  '6': 'Cerrada',
-  '7': 'Desierta',
-  '8': 'Adjudicada',
-  '18': 'Revocada',
+const ESTADO_MAP = {
+  '5':  { label: 'Publicada',  bg: 'rgba(16,185,129,0.15)',  color: '#34d399' },
+  '6':  { label: 'Cerrada',    bg: 'rgba(245,158,11,0.15)',  color: '#fbbf24' },
+  '7':  { label: 'Desierta',   bg: 'rgba(239,68,68,0.15)',   color: '#f87171' },
+  '8':  { label: 'Adjudicada', bg: 'rgba(59,130,246,0.15)',  color: '#60a5fa' },
+  '18': { label: 'Revocada',   bg: 'rgba(156,163,175,0.15)', color: '#9ca3af' },
 }
 
-const ESTADO_COLOR = {
-  '5': { bg: 'rgba(16, 185, 129, 0.15)', color: '#34d399' },
-  '6': { bg: 'rgba(245, 158, 11, 0.15)', color: '#fbbf24' },
-  '7': { bg: 'rgba(239, 68, 68, 0.15)', color: '#f87171' },
-  '8': { bg: 'rgba(59, 130, 246, 0.15)', color: '#60a5fa' },
-  '18': { bg: 'rgba(156, 163, 175, 0.15)', color: '#9ca3af' },
+const TIPO_MAP = {
+  'LS1': 'Lic. < 100 UTM',
+  'LP':  'Prop. Pública',
+  'LQ':  'Lic. > 1000 UTM',
+  'LE':  'Lic. < 1000 UTM',
+  'CO':  'Conv. Marco',
+  'B':   'Compra Directa',
+  'E':   'Compra Ágil',
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -36,53 +38,41 @@ function formatFecha(fechaStr) {
   if (!fechaStr) return 'N/A'
   try {
     return new Date(fechaStr).toLocaleDateString('es-CL', {
-      day: '2-digit', month: '2-digit', year: 'numeric'
+      day: '2-digit', month: '2-digit', year: 'numeric',
     })
-  } catch {
-    return fechaStr
-  }
+  } catch { return fechaStr }
 }
 
 function hoyFormatted() {
   return new Date().toLocaleDateString('es-CL', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'
+    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
   })
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// COMPONENTE BADGE DE ESTADO
+// SUB-COMPONENTES
 // ─────────────────────────────────────────────────────────────────────────────
 
 function EstadoBadge({ codigo }) {
-  const label = ESTADO_LABEL[String(codigo)] || `Estado ${codigo}`
-  const style = ESTADO_COLOR[String(codigo)] || { bg: 'rgba(139,92,246,0.15)', color: '#a78bfa' }
+  const e = ESTADO_MAP[String(codigo)] || { label: `Est. ${codigo}`, bg: 'rgba(139,92,246,0.15)', color: '#a78bfa' }
   return (
     <span style={{
-      padding: '0.2rem 0.6rem',
-      borderRadius: '999px',
-      fontSize: '0.7rem',
-      fontWeight: 700,
-      textTransform: 'uppercase',
-      letterSpacing: '0.05em',
-      background: style.bg,
-      color: style.color,
+      padding: '0.2rem 0.6rem', borderRadius: '999px',
+      fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em',
+      background: e.bg, color: e.color,
     }}>
-      {label}
+      {e.label}
     </span>
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// COMPONENTE TARJETA DE LICITACIÓN
-// ─────────────────────────────────────────────────────────────────────────────
-
 function LicitacionCard({ licitacion, onCopyId }) {
   const l = licitacion
   const monto = formatMonto(l.MontoPesos)
+  const tipo = TIPO_MAP[l.Tipo] || l.Tipo
 
   return (
     <div className="glass card card-hover">
-      {/* Fila superior: ID copiable + estado */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
         <span
           className="badge badge-orange"
@@ -94,29 +84,20 @@ function LicitacionCard({ licitacion, onCopyId }) {
         </span>
         <EstadoBadge codigo={l.CodigoEstado} />
       </div>
-
-      {/* Nombre */}
       <h3 style={{ marginBottom: '0.5rem', fontSize: '1rem', lineHeight: '1.4', fontWeight: 600 }}>
         {l.Nombre || 'Sin nombre'}
       </h3>
-
-      {/* Organismo */}
-      <p style={{ color: 'var(--text-alt)', fontSize: '0.8rem', marginBottom: '1rem', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+      <p style={{ color: 'var(--text-alt)', fontSize: '0.8rem', marginBottom: '0.75rem', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
         <span>🏢</span> {l.Organismo || '—'}
       </p>
-
-      {/* Tipo de licitación */}
-      {l.Tipo && (
+      {tipo && (
         <p style={{ color: 'var(--text-alt)', fontSize: '0.75rem', marginBottom: '1rem' }}>
-          <strong style={{ color: 'var(--text-main)' }}>Tipo:</strong> {l.Tipo}
+          <strong style={{ color: 'var(--text-main)' }}>Tipo:</strong> {tipo}
         </p>
       )}
-
-      {/* Footer: monto y fecha de cierre */}
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginTop: 'auto', paddingTop: '1rem',
-        borderTop: '1px solid rgba(255,255,255,0.06)'
+        marginTop: 'auto', paddingTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.06)',
       }}>
         <span style={{ fontSize: '0.9rem', color: 'var(--success)', fontWeight: 700 }}>
           {monto || <span style={{ color: 'var(--text-alt)', fontWeight: 400 }}>Sin monto</span>}
@@ -134,36 +115,34 @@ function LicitacionCard({ licitacion, onCopyId }) {
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
 
-function App() {
+const TABS = [
+  { id: 'licitaciones', label: '📋 Licitaciones' },
+  { id: 'analitica',    label: '📊 Analítica' },
+]
+
+export default function App() {
   const [licitaciones, setLicitaciones] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [cantidad, setCantidad] = useState(0)
   const [toast, setToast] = useState(null)
   const [busqueda, setBusqueda] = useState('')
+  const [activeTab, setActiveTab] = useState('licitaciones')
 
-  // Carga automática al montar la app
-  useEffect(() => {
-    cargarLicitacionesHoy()
-  }, [])
+  useEffect(() => { cargarLicitacionesHoy() }, [])
 
   const mostrarToast = (msg, tipo = 'info') => {
     setToast({ msg, tipo })
     setTimeout(() => setToast(null), 3000)
   }
 
-  // ── Fetch principal: licitaciones de hoy desde la API Oficial ──────────────
   const cargarLicitacionesHoy = async () => {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/mp/licitaciones/hoy')
+      const res  = await fetch('/api/mp/licitaciones/hoy')
       const data = await res.json()
-
-      if (!res.ok || data.status === 'error') {
-        throw new Error(data.mensaje || `Error HTTP ${res.status}`)
-      }
-
+      if (!res.ok || data.status === 'error') throw new Error(data.mensaje || `Error HTTP ${res.status}`)
       setLicitaciones(data.Listado || [])
       setCantidad(data.Cantidad || 0)
       mostrarToast(`✅ ${data.Cantidad} licitaciones cargadas`, 'success')
@@ -174,14 +153,12 @@ function App() {
     }
   }
 
-  // ── Copiar ID al portapapeles ──────────────────────────────────────────────
   const copiarId = (id) => {
     if (!id) return
     navigator.clipboard.writeText(id)
     mostrarToast(`📋 ID copiado: ${id}`, 'copy')
   }
 
-  // ── Filtrado por búsqueda ──────────────────────────────────────────────────
   const licitacionesFiltradas = licitaciones.filter(l => {
     if (!busqueda.trim()) return true
     const q = busqueda.toLowerCase()
@@ -207,53 +184,77 @@ function App() {
             {hoyFormatted()}
           </p>
         </div>
-
         <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-          {/* Buscador rápido */}
-          <input
-            type="text"
-            placeholder="Buscar por nombre, organismo o ID..."
-            value={busqueda}
-            onChange={e => setBusqueda(e.target.value)}
-            style={{
-              padding: '0.6rem 1rem',
-              borderRadius: '10px',
-              border: '1px solid var(--border)',
-              background: 'rgba(30,41,59,0.8)',
-              color: 'white',
-              width: '260px',
-              fontSize: '0.85rem',
-              outline: 'none',
-            }}
-          />
-          {/* Botón actualizar */}
+          {activeTab === 'licitaciones' && (
+            <input
+              type="text"
+              placeholder="Buscar nombre, organismo o ID..."
+              value={busqueda}
+              onChange={e => setBusqueda(e.target.value)}
+              style={{
+                padding: '0.6rem 1rem', borderRadius: '10px',
+                border: '1px solid var(--border)',
+                background: 'rgba(30,41,59,0.8)',
+                color: 'white', width: '240px', fontSize: '0.85rem', outline: 'none',
+              }}
+            />
+          )}
           <button
             className="btn btn-primary"
             onClick={cargarLicitacionesHoy}
             disabled={loading}
             id="btn-actualizar"
           >
-            {loading
-              ? <><div className="loading-spinner"></div> Cargando...</>
-              : '🔄 Actualizar'}
+            {loading ? <><div className="loading-spinner" />&nbsp;Cargando...</> : '🔄 Actualizar'}
           </button>
         </div>
       </header>
 
+      {/* ── NAVEGACIÓN POR TABS ── */}
+      <div style={{
+        display: 'flex', gap: '0.25rem', marginBottom: '2rem',
+        background: 'rgba(15,23,42,0.6)', padding: '0.3rem',
+        borderRadius: '14px', width: 'fit-content',
+        border: '1px solid var(--border)',
+      }}>
+        {TABS.map(t => (
+          <button
+            key={t.id}
+            onClick={() => setActiveTab(t.id)}
+            style={{
+              padding: '0.55rem 1.4rem', borderRadius: '10px',
+              border: 'none', cursor: 'pointer',
+              fontWeight: 600, fontSize: '0.9rem',
+              transition: 'all 0.2s',
+              background: activeTab === t.id
+                ? 'linear-gradient(135deg, var(--primary), #7c3aed)'
+                : 'transparent',
+              color: activeTab === t.id ? 'white' : 'var(--text-alt)',
+              boxShadow: activeTab === t.id ? '0 4px 12px rgba(139,92,246,0.35)' : 'none',
+            }}
+          >
+            {t.label}
+            {t.id === 'licitaciones' && cantidad > 0 && (
+              <span style={{
+                marginLeft: '0.5rem', padding: '0.1rem 0.5rem',
+                borderRadius: '999px', fontSize: '0.7rem',
+                background: 'rgba(255,255,255,0.2)', fontWeight: 700,
+              }}>
+                {cantidad}
+              </span>
+            )}
+          </button>
+        ))}
+      </div>
+
       {/* ── TOAST ── */}
       {toast && (
         <div style={{
-          position: 'fixed',
-          top: '1.5rem',
-          right: '1.5rem',
-          zIndex: 1000,
-          padding: '0.9rem 1.4rem',
-          borderRadius: '12px',
+          position: 'fixed', top: '1.5rem', right: '1.5rem', zIndex: 1000,
+          padding: '0.9rem 1.4rem', borderRadius: '12px',
           background: toast.tipo === 'success' ? 'rgba(16,185,129,0.15)' : 'rgba(139,92,246,0.15)',
           border: `1px solid ${toast.tipo === 'success' ? 'rgba(52,211,153,0.4)' : 'rgba(139,92,246,0.4)'}`,
-          color: 'var(--text-main)',
-          fontSize: '0.85rem',
-          fontWeight: 500,
+          color: 'var(--text-main)', fontSize: '0.85rem', fontWeight: 500,
           backdropFilter: 'blur(12px)',
           animation: 'slideIn 0.3s ease',
           boxShadow: '0 8px 32px rgba(0,0,0,0.4)',
@@ -272,15 +273,15 @@ function App() {
         }}>
           <p style={{ color: '#f87171', fontWeight: 600, marginBottom: '0.25rem' }}>⚠️ Error al cargar datos</p>
           <p style={{ color: 'var(--text-alt)', fontSize: '0.85rem' }}>{error}</p>
-          {error.includes('ticket') || error.includes('401') ? (
+          {(error.includes('ticket') || error.includes('401')) && (
             <p style={{ color: '#fbbf24', fontSize: '0.8rem', marginTop: '0.5rem' }}>
-              💡 Verifica que <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>MERCADO_PUBLICO_TICKET</code> esté configurado en el archivo <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>.env</code> del backend.
+              💡 Verifica que <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>MERCADO_PUBLICO_TICKET</code> esté configurado en el archivo <code style={{ background: 'rgba(255,255,255,0.1)', padding: '0.1rem 0.4rem', borderRadius: '4px' }}>.env</code>.
             </p>
-          ) : null}
+          )}
         </div>
       )}
 
-      {/* ── ESTADO DE CARGA: SKELETON ── */}
+      {/* ── SKELETON LOADER ── */}
       {loading && licitaciones.length === 0 && (
         <div className="grid">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -293,39 +294,57 @@ function App() {
         </div>
       )}
 
-      {/* ── CONTENIDO PRINCIPAL ── */}
-      {!loading || licitaciones.length > 0 ? (
+      {/* ── CONTENIDO POR TAB ── */}
+      {(!loading || licitaciones.length > 0) && (
         <main>
-          {/* Título de sección con conteo */}
-          <div className="section-title">
-            <h2>Licitaciones de Hoy</h2>
-            <span className="badge badge-blue">
-              {busqueda ? `${licitacionesFiltradas.length} / ${cantidad}` : cantidad}
-            </span>
-            {busqueda && licitacionesFiltradas.length === 0 && (
-              <span style={{ color: 'var(--text-alt)', fontSize: '0.85rem' }}>— Sin resultados para "{busqueda}"</span>
-            )}
-          </div>
 
-          {/* Grid de tarjetas */}
-          {licitacionesFiltradas.length === 0 && !loading ? (
-            <div className="glass card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
-              <p style={{ fontSize: '2rem', marginBottom: '1rem' }}>📭</p>
-              <p style={{ color: 'var(--text-alt)', fontSize: '0.95rem' }}>
-                {busqueda
-                  ? 'No se encontraron licitaciones con ese criterio.'
-                  : 'No hay licitaciones publicadas hoy aún. Intenta actualizar más tarde.'}
-              </p>
-            </div>
-          ) : (
-            <div className="grid">
-              {licitacionesFiltradas.map((l, i) => (
-                <LicitacionCard key={l.CodigoLicitacion || i} licitacion={l} onCopyId={copiarId} />
-              ))}
-            </div>
+          {/* ── TAB: LICITACIONES ── */}
+          {activeTab === 'licitaciones' && (
+            <>
+              <div className="section-title">
+                <h2>Licitaciones de Hoy</h2>
+                <span className="badge badge-blue">
+                  {busqueda ? `${licitacionesFiltradas.length} / ${cantidad}` : cantidad}
+                </span>
+                {busqueda && licitacionesFiltradas.length === 0 && (
+                  <span style={{ color: 'var(--text-alt)', fontSize: '0.85rem' }}>
+                    — Sin resultados para "{busqueda}"
+                  </span>
+                )}
+              </div>
+
+              {licitacionesFiltradas.length === 0 && !loading ? (
+                <div className="glass card" style={{ textAlign: 'center', padding: '4rem 2rem' }}>
+                  <p style={{ fontSize: '2rem', marginBottom: '1rem' }}>📭</p>
+                  <p style={{ color: 'var(--text-alt)', fontSize: '0.95rem' }}>
+                    {busqueda
+                      ? `No se encontraron licitaciones con "${busqueda}".`
+                      : 'No hay licitaciones publicadas hoy aún.'}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid">
+                  {licitacionesFiltradas.map((l, i) => (
+                    <LicitacionCard key={l.CodigoLicitacion || i} licitacion={l} onCopyId={copiarId} />
+                  ))}
+                </div>
+              )}
+            </>
           )}
+
+          {/* ── TAB: ANALÍTICA ── */}
+          {activeTab === 'analitica' && (
+            <>
+              <div className="section-title" style={{ marginBottom: '2rem' }}>
+                <h2>Analítica de Mercado</h2>
+                <span className="badge badge-blue">{cantidad} licitaciones</span>
+              </div>
+              <AnalyticsView licitaciones={licitaciones} />
+            </>
+          )}
+
         </main>
-      ) : null}
+      )}
 
       {/* ── FOOTER ── */}
       <footer style={{ marginTop: '4rem', paddingTop: '2rem', borderTop: '1px solid var(--border)', textAlign: 'center' }}>
@@ -340,5 +359,3 @@ function App() {
     </div>
   )
 }
-
-export default App
