@@ -99,8 +99,9 @@ const apiClient = axios.create({
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
- * Formatea una fecha JavaScript al string requerido por la API: "AAAAMMDD".
- * Ejemplo: new Date('2025-06-26') → "20250626"
+ * Formatea una fecha JavaScript al string requerido por la API: "DDMMAAAA".
+ * ⚠️  La API de Mercado Público NO usa AAAAMMDD — usa DDMMAAAA.
+ * Ejemplo: new Date('2026-07-06') → "06072026"
  *
  * @param {Date} date
  * @returns {string}
@@ -109,7 +110,8 @@ function formatFechaAPI(date) {
   const anio = date.getFullYear();
   const mes  = String(date.getMonth() + 1).padStart(2, '0');
   const dia  = String(date.getDate()).padStart(2, '0');
-  return `${anio}${mes}${dia}`;
+  // Orden correcto: DIA + MES + AÑO  (DDMMAAAA)
+  return `${dia}${mes}${anio}`;
 }
 
 /**
@@ -180,9 +182,9 @@ function handleApiError(error, contexto) {
 /**
  * Obtiene las licitaciones publicadas HOY.
  *
- * Endpoint: GET /licitaciones?fecha=AAAAMMDD&ticket=TU_TICKET
+ * Endpoint: GET /licitaciones?fecha=DDMMAAAA&ticket=TU_TICKET
  *
- * La API usa la fecha en formato "AAAAMMDD" como filtro. Al pasar la fecha
+ * La API usa la fecha en formato "DDMMAAAA" como filtro. Al pasar la fecha
  * actual obtenemos solo las licitaciones publicadas durante el día en curso.
  *
  * @returns {Promise<RespuestaListado>} Objeto con `Cantidad` y `Listado`
@@ -190,7 +192,7 @@ function handleApiError(error, contexto) {
 async function getLicitacionesHoy() {
   const hoy     = formatFechaAPI(new Date());
   // Endpoint: /licitaciones
-  // Parámetro `fecha`: filtra por fecha de publicación (formato AAAAMMDD)
+  // Parámetro `fecha`: filtra por fecha de publicación (formato DDMMAAAA)
   const url     = '/licitaciones';
   const params  = buildParams({ fecha: hoy });
 
@@ -265,10 +267,10 @@ async function getLicitacionesPorEstado(estado) {
 /**
  * Busca licitaciones en un rango de fechas.
  *
- * Endpoint: GET /licitaciones?fechaInicio=AAAAMMDD&fechaFin=AAAAMMDD&ticket=TU_TICKET
+ * Endpoint: GET /licitaciones?fechaInicio=DDMMAAAA&fechaFin=DDMMAAAA&ticket=TU_TICKET
  *
  * Útil para reportes y análisis históricos. Las fechas se convierten
- * automáticamente al formato "AAAAMMDD" que requiere la API.
+ * automáticamente al formato "DDMMAAAA" que requiere la API.
  *
  * @param {Date} fechaInicio - Fecha de inicio del rango
  * @param {Date} fechaFin    - Fecha de fin del rango
@@ -283,7 +285,7 @@ async function getLicitacionesPorRango(fechaInicio, fechaFin) {
   }
 
   const params = buildParams({
-    // fechaInicio/fechaFin: acotan la búsqueda al rango indicado (formato AAAAMMDD)
+    // fechaInicio/fechaFin: acotan la búsqueda al rango indicado (formato DDMMAAAA)
     fechaInicio: formatFechaAPI(fechaInicio),
     fechaFin:    formatFechaAPI(fechaFin),
   });
