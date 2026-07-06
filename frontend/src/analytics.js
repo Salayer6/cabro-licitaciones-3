@@ -106,7 +106,9 @@ export function calcularAnaliticaOperacion(listado) {
       const hora = new Date(l.FechaPublicacion).getHours()
       const label = `${String(hora).padStart(2, '0')}:00`
       porHora[label] = (porHora[label] || 0) + 1
-    } catch {}
+    } catch (e) {
+      console.debug('Error formateando hora:', e);
+    }
   })
   const distribucionHora = Object.entries(porHora)
     .sort((a, b) => a[0].localeCompare(b[0]))

@@ -66,7 +66,7 @@ function EstadoBadge({ codigo }) {
   )
 }
 
-function LicitacionCard({ licitacion, onCopyId }) {
+function LicitacionCard({ licitacion, onCopyId, onVerDetalle }) {
   const l = licitacion
   const monto = formatMonto(l.MontoPesos)
   const tipo = TIPO_MAP[l.Tipo] || l.Tipo
@@ -74,14 +74,34 @@ function LicitacionCard({ licitacion, onCopyId }) {
   return (
     <div className="glass card card-hover" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-        <span
-          className="badge badge-orange"
-          style={{ cursor: 'pointer', fontWeight: 'bold', fontSize: '0.72rem' }}
-          onClick={() => onCopyId(l.CodigoLicitacion)}
-          title="Clic para copiar ID"
-        >
-          {l.CodigoLicitacion || 'N/A'} 📋
-        </span>
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+          <span
+            className="badge badge-orange"
+            style={{ cursor: 'pointer', fontWeight: 'bold', fontSize: '0.72rem' }}
+            onClick={() => onCopyId(l.CodigoLicitacion)}
+            title="Clic para copiar ID"
+          >
+            {l.CodigoLicitacion || 'N/A'} 📋
+          </span>
+          <button 
+            onClick={() => onVerDetalle(l.CodigoLicitacion)}
+            style={{
+              background: 'rgba(255,255,255,0.05)',
+              border: '1px solid var(--border)',
+              color: 'var(--text-main)',
+              padding: '0.15rem 0.4rem',
+              borderRadius: '6px',
+              fontSize: '0.65rem',
+              cursor: 'pointer',
+              fontWeight: 600,
+              transition: 'background 0.2s'
+            }}
+            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+          >
+            🔍 Ficha
+          </button>
+        </div>
         <EstadoBadge codigo={l.CodigoEstado} />
       </div>
       <h3 style={{ marginBottom: '0.5rem', fontSize: '1rem', lineHeight: '1.4', fontWeight: 600 }}>
@@ -112,6 +132,180 @@ function LicitacionCard({ licitacion, onCopyId }) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// DATOS MOCK DE PRUEBA (Para cuando la API no tiene configurada la credencial)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MOCK_LICITACIONES = [
+  {
+    CodigoLicitacion: '4582-12-LQ26',
+    Nombre: 'Soporte informático integral y administración de servidores para la comuna',
+    Organismo: 'Ilustre Municipalidad de Las Condes',
+    CodigoEstado: '5',
+    MontoPesos: '68000000',
+    Tipo: 'LQ',
+    FechaCierre: new Date(Date.now() + 5*24*60*60*1000).toISOString(),
+    FechaPublicacion: new Date().toISOString()
+  },
+  {
+    CodigoLicitacion: '7821-3-LE26',
+    Nombre: 'Adquisición de equipamiento médico y ventiladores de alta complejidad',
+    Organismo: 'Servicio de Salud Metropolitano Oriente Providencia',
+    CodigoEstado: '5',
+    MontoPesos: '145000000',
+    Tipo: 'LE',
+    FechaCierre: new Date(Date.now() + 12*24*60*60*1000).toISOString(),
+    FechaPublicacion: new Date().toISOString()
+  },
+  {
+    CodigoLicitacion: '1290-44-E26',
+    Nombre: 'Compra ágil de licencias de Microsoft Office 365 Pro para educación pública',
+    Organismo: 'Subsecretaría de Educación Santiago Centro',
+    CodigoEstado: '5',
+    MontoPesos: '4800000',
+    Tipo: 'E',
+    FechaCierre: new Date(Date.now() + 2*24*60*60*1000).toISOString(),
+    FechaPublicacion: new Date().toISOString()
+  },
+  {
+    CodigoLicitacion: '8912-10-LQ26',
+    Nombre: 'Habilitación de redes estructuradas, fibra óptica y WiFi en campus universitario',
+    Organismo: 'Universidad de Concepción',
+    CodigoEstado: '5',
+    MontoPesos: '55000000',
+    Tipo: 'LQ',
+    FechaCierre: new Date(Date.now() + 8*24*60*60*1000).toISOString(),
+    FechaPublicacion: new Date().toISOString()
+  },
+  {
+    CodigoLicitacion: '5543-9-LE26',
+    Nombre: 'Servicio de consultoría y auditoría de ciberseguridad perimetral',
+    Organismo: 'Tesorería General de la República Temuco',
+    CodigoEstado: '6',
+    MontoPesos: '12000000',
+    Tipo: 'LE',
+    FechaCierre: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
+    FechaPublicacion: new Date().toISOString()
+  },
+  {
+    CodigoLicitacion: '2211-100-CO26',
+    Nombre: 'Convenio marco para el suministro de materiales de oficina e insumos papeleros',
+    Organismo: 'Dirección de Compras y Contratación Pública Valparaíso',
+    CodigoEstado: '8',
+    MontoPesos: '250000000',
+    Tipo: 'CO',
+    FechaCierre: new Date(Date.now() - 10*24*60*60*1000).toISOString(),
+    FechaPublicacion: new Date().toISOString()
+  }
+];
+
+const MOCK_DETALLES = {
+  '4582-12-LQ26': {
+    CodigoLicitacion: '4582-12-LQ26',
+    Nombre: 'Soporte informático integral y administración de servidores para la comuna',
+    Descripcion: 'Servicio de soporte técnico presencial y remoto, mantenimiento correctivo y preventivo de hardware y software, administración activa de servidores municipales y soporte a usuarios finales de la Municipalidad de Las Condes.',
+    Organismo: 'Ilustre Municipalidad de Las Condes',
+    NombreRegion: 'Región Metropolitana de Santiago',
+    Comuna: 'Las Condes',
+    MontoPesos: '68000000',
+    Tipo: 'LQ',
+    FechaPublicacion: new Date().toISOString(),
+    FechaCierre: new Date(Date.now() + 5*24*60*60*1000).toISOString(),
+    ResponsableContrato: 'Juan Pablo Pérez - Administrador de Sistemas',
+    Items: [
+      { NombreProducto: 'Servicio de Soporte TI Presencial Nivel 1', Cantidad: 4, UnidadMedida: 'Mes' },
+      { NombreProducto: 'Administración de Servidores Cloud Linux/Windows', Cantidad: 2, UnidadMedida: 'Mes' },
+      { NombreProducto: 'Mantenimiento Preventivo Computadores Municipales', Cantidad: 120, UnidadMedida: 'Unidad' }
+    ]
+  },
+  '7821-3-LE26': {
+    CodigoLicitacion: '7821-3-LE26',
+    Nombre: 'Adquisición de equipamiento médico y ventiladores de alta complejidad',
+    Descripcion: 'Adquisición y puesta en marcha de ventiladores mecánicos invasivos de alta gama, monitores multiparámetros y equipamiento complementario para la Red de Urgencia del Servicio de Salud Metropolitano Oriente.',
+    Organismo: 'Servicio de Salud Metropolitano Oriente Providencia',
+    NombreRegion: 'Región Metropolitana de Santiago',
+    Comuna: 'Providencia',
+    MontoPesos: '145000000',
+    Tipo: 'LE',
+    FechaPublicacion: new Date().toISOString(),
+    FechaCierre: new Date(Date.now() + 12*24*60*60*1000).toISOString(),
+    ResponsableContrato: 'Dra. María Elisa Gómez - Directora Médica',
+    Items: [
+      { NombreProducto: 'Ventilador Mecánico Invasivo Neonatal/Adulto', Cantidad: 5, UnidadMedida: 'Unidad' },
+      { NombreProducto: 'Monitor Multiparámetro Nivel Avanzado', Cantidad: 8, UnidadMedida: 'Unidad' }
+    ]
+  },
+  '1290-44-E26': {
+    CodigoLicitacion: '1290-44-E26',
+    Nombre: 'Compra ágil de licencias de Microsoft Office 365 Pro para educación pública',
+    Descripcion: 'Adquisición directa mediante Compra Ágil de licenciamiento anual educativo de Microsoft Office 365 Pro para alumnos y docentes de establecimientos educacionales de la comuna de Santiago.',
+    Organismo: 'Subsecretaría de Educación Santiago Centro',
+    NombreRegion: 'Región Metropolitana de Santiago',
+    Comuna: 'Santiago Centro',
+    MontoPesos: '4800000',
+    Tipo: 'E',
+    FechaPublicacion: new Date().toISOString(),
+    FechaCierre: new Date(Date.now() + 2*24*60*60*1000).toISOString(),
+    ResponsableContrato: 'Carlos Soto - Jefe de Informática Educación',
+    Items: [
+      { NombreProducto: 'Suscripción Anual Microsoft 365 A3 Docentes', Cantidad: 150, UnidadMedida: 'Licencia' },
+      { NombreProducto: 'Suscripción Anual Microsoft 365 A3 Alumnos', Cantidad: 500, UnidadMedida: 'Licencia' }
+    ]
+  },
+  '8912-10-LQ26': {
+    CodigoLicitacion: '8912-10-LQ26',
+    Nombre: 'Habilitación de redes estructuradas, fibra óptica y WiFi en campus universitario',
+    Descripcion: 'Servicio de diseño, canalización, cableado estructurado Categoría 6A, tendido de fibra óptica multimodo y configuración de puntos de acceso inalámbricos en los pabellones de Ingeniería de la Universidad de Concepción.',
+    Organismo: 'Universidad de Concepción',
+    NombreRegion: 'Región del Bío Bío',
+    Comuna: 'Concepción',
+    MontoPesos: '55000000',
+    Tipo: 'LQ',
+    FechaPublicacion: new Date().toISOString(),
+    FechaCierre: new Date(Date.now() + 8*24*60*60*1000).toISOString(),
+    ResponsableContrato: 'Ing. Pedro Ramírez - Director de Infraestructura Digital',
+    Items: [
+      { NombreProducto: 'Cableado estructurado Cat6A por punto de red', Cantidad: 180, UnidadMedida: 'Punto' },
+      { NombreProducto: 'Puntos de Acceso WiFi 6 Empresariales', Cantidad: 24, UnidadMedida: 'Unidad' },
+      { NombreProducto: 'Fibra Óptica Multimodo OM4 instalada (metros)', Cantidad: 850, UnidadMedida: 'Metro' }
+    ]
+  },
+  '5543-9-LE26': {
+    CodigoLicitacion: '5543-9-LE26',
+    Nombre: 'Servicio de consultoría y auditoría de ciberseguridad perimetral',
+    Descripcion: 'Análisis de vulnerabilidades, pruebas de penetración (pentesting) externas e internas, y auditoría de políticas de firewall de la Tesorería General de la República en su dirección regional de La Araucanía.',
+    Organismo: 'Tesorería General de la República Temuco',
+    NombreRegion: 'Región de La Araucanía',
+    Comuna: 'Temuco',
+    MontoPesos: '12000000',
+    Tipo: 'LE',
+    FechaPublicacion: new Date().toISOString(),
+    FechaCierre: new Date(Date.now() - 1*24*60*60*1000).toISOString(),
+    ResponsableContrato: 'Sofía Valenzuela - Encargada de Seguridad de la Información',
+    Items: [
+      { NombreProducto: 'Servicio de Pentesting Externo / Caja Negra', Cantidad: 1, UnidadMedida: 'Global' },
+      { NombreProducto: 'Auditoría de Configuración e Reglas de Firewall', Cantidad: 1, UnidadMedida: 'Global' }
+    ]
+  },
+  '2211-100-CO26': {
+    CodigoLicitacion: '2211-100-CO26',
+    Nombre: 'Convenio marco para el suministro de materiales de oficina e insumos papeleros',
+    Descripcion: 'Licitación pública de convenio marco nacional para la provisión continua de artículos de escritorio, carpetas, lápices y resmas de papel para todas las entidades gubernamentales del país.',
+    Organismo: 'Dirección de Compras y Contratación Pública Valparaíso',
+    NombreRegion: 'Región de Valparaíso',
+    Comuna: 'Valparaíso',
+    MontoPesos: '250000000',
+    Tipo: 'CO',
+    FechaPublicacion: new Date().toISOString(),
+    FechaCierre: new Date(Date.now() - 10*24*60*60*1000).toISOString(),
+    ResponsableContrato: 'Alejandro Tapia - Jefe Convenios Marco',
+    Items: [
+      { NombreProducto: 'Resma de Papel Multipropósito Carta 75g', Cantidad: 5000, UnidadMedida: 'Resma' },
+      { NombreProducto: 'Resma de Papel Multipropósito Oficio 75g', Cantidad: 3000, UnidadMedida: 'Resma' }
+    ]
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────────────────
 // COMPONENTE PRINCIPAL
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -128,6 +322,12 @@ export default function App() {
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
   const [activeTab, setActiveTab] = useState('licitaciones')
+  const [isDemoMode, setIsDemoMode] = useState(false)
+
+  // Consulta por ID y Ficha
+  const [detalleSeleccionado, setDetalleSeleccionado] = useState(null)
+  const [loadingDetalle, setLoadingDetalle] = useState(false)
+  const [busquedaId, setBusquedaId] = useState('')
 
   // Filtros
   const [busqueda, setBusqueda] = useState('')
@@ -144,7 +344,7 @@ export default function App() {
 
   // Agrupamiento
   const [agruparPor, setAgruparPor] = useState('sin') // 'sin', 'organismo', 'estado', 'tipo'
-  const [mostrarFiltros, setMostrarFiltros] = useState(false)
+  const [mostrarFiltros, setMostrarFiltros] = useState(true) // Expandido por defecto
 
   // IA Recomendador
   const [perfilEmpresa, setPerfilEmpresa] = useState(() => {
@@ -175,6 +375,7 @@ export default function App() {
     setLoading(true)
     setError(null)
     setModoFiltroFecha('hoy')
+    setIsDemoMode(false)
     try {
       const res  = await fetch('/api/mp/licitaciones/hoy')
       const data = await res.json()
@@ -183,6 +384,9 @@ export default function App() {
       mostrarToast(`✅ ${data.Cantidad} licitaciones cargadas`, 'success')
     } catch (err) {
       setError(err.message)
+      setLicitaciones(MOCK_LICITACIONES)
+      setIsDemoMode(true)
+      mostrarToast('⚡ Usando licitaciones de prueba (Modo Demostración)', 'info')
     } finally {
       setLoading(false)
     }
@@ -196,6 +400,7 @@ export default function App() {
     setLoading(true)
     setError(null)
     setModoFiltroFecha('rango')
+    setIsDemoMode(false)
     try {
       const res = await fetch(`/api/mp/licitaciones/rango?desde=${fechaDesde}&hasta=${fechaHasta}`)
       const data = await res.json()
@@ -204,6 +409,9 @@ export default function App() {
       mostrarToast(`✅ ${data.Cantidad} licitaciones en el rango`, 'success')
     } catch (err) {
       setError(err.message)
+      setLicitaciones(MOCK_LICITACIONES)
+      setIsDemoMode(true)
+      mostrarToast('⚡ Usando licitaciones de prueba (Modo Demostración)', 'info')
     } finally {
       setLoading(false)
     }
@@ -239,6 +447,57 @@ export default function App() {
     } finally {
       setLoadingIA(false)
     }
+  }
+
+  // ── Consulta detallada de Ficha por ID (Licitación o Compra Ágil) ──────────
+  
+  const abrirDetalleLicitacion = async (id) => {
+    if (!id) return
+    setLoadingDetalle(true)
+    setDetalleSeleccionado(null) // Reset anterior
+    try {
+      if (isDemoMode) {
+        // En modo demo, buscamos en el MOCK_DETALLES o creamos uno dinámico básico
+        const mock = MOCK_DETALLES[id] || {
+          CodigoLicitacion: id,
+          Nombre: 'Licitación de Prueba Simulada',
+          Descripcion: 'Esta es una ficha técnica simulada generada automáticamente. Muestra el detalle del requerimiento público para pruebas de interfaz en modo demostración.',
+          Organismo: 'Ilustre Municipalidad de Las Condes (Demo)',
+          NombreRegion: 'Región Metropolitana de Santiago',
+          Comuna: 'Las Condes',
+          MontoPesos: '35000000',
+          Tipo: 'LQ',
+          FechaPublicacion: new Date().toISOString(),
+          FechaCierre: new Date(Date.now() + 5*24*60*60*1000).toISOString(),
+          ResponsableContrato: 'Administrador de Pruebas TI',
+          Items: [
+            { NombreProducto: 'Soporte y Consultoría Tecnológica Estándar', Cantidad: 1, UnidadMedida: 'Global' }
+          ]
+        }
+        setDetalleSeleccionado(mock)
+      } else {
+        const res = await fetch(`/api/mp/licitaciones/${encodeURIComponent(id.trim())}`)
+        const data = await res.json()
+        if (!res.ok || data.status === 'error') {
+          throw new Error(data.mensaje || 'Error al obtener ficha de licitación.')
+        }
+        const detalle = data.detalle || data
+        setDetalleSeleccionado(detalle)
+      }
+    } catch (err) {
+      mostrarToast(`❌ Error al obtener detalle: ${err.message}`, 'error')
+    } finally {
+      setLoadingDetalle(false)
+    }
+  }
+
+  const buscarPorIdDirecto = () => {
+    if (!busquedaId.trim()) {
+      mostrarToast('⚠️ Ingresa un ID de licitación o compra ágil', 'warning')
+      return
+    }
+    abrirDetalleLicitacion(busquedaId.trim())
+    setBusquedaId('')
   }
 
   // ── Gestión de comunas (multiciudad) ───────────────────────────────────────
@@ -354,6 +613,21 @@ export default function App() {
           </button>
         </div>
       </header>
+
+      {/* ── BANNER MODO DEMOSTRACIÓN ── */}
+      {isDemoMode && (
+        <div className="glass card" style={{
+          marginBottom: '2rem', padding: '1rem 1.5rem',
+          background: 'rgba(59, 130, 246, 0.08)',
+          borderLeft: '4px solid #60a5fa',
+          borderColor: 'rgba(59, 130, 246, 0.3)',
+          animation: 'slideIn 0.3s ease'
+        }}>
+          <p style={{ fontSize: '0.85rem', color: '#60a5fa', display: 'flex', alignItems: 'center', gap: '0.5rem', margin: 0 }}>
+            <span>⚡</span> <strong>Modo Demostración Activo:</strong> El servidor no tiene configurado su credencial (<code style={{ background: 'rgba(255,255,255,0.06)', padding: '0.1rem 0.3rem', borderRadius: '4px' }}>MERCADO_PUBLICO_TICKET</code>). Hemos cargado licitaciones de prueba para que puedas comprobar interactivamente los filtros avanzados de comunas (multiciudad), la agrupación por organismo y el recomendador con IA.
+          </p>
+        </div>
+      )}
 
       {/* ── FILTROS AVANZADOS EXPANDIBLES ── */}
       {mostrarFiltros && (
@@ -592,7 +866,36 @@ export default function App() {
                     {licitacionesFiltradas.length} de {licitaciones.length}
                   </span>
                 </div>
-                {activeTab === 'licitaciones' && (
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  {/* Buscar por ID directo */}
+                  <div style={{ display: 'flex', gap: '0.25rem' }}>
+                    <input
+                      type="text"
+                      placeholder="ID licitación o compra ágil..."
+                      value={busquedaId}
+                      onChange={e => setBusquedaId(e.target.value)}
+                      onKeyDown={e => e.key === 'Enter' && buscarPorIdDirecto()}
+                      style={{
+                        padding: '0.5rem 0.9rem', borderRadius: '8px',
+                        border: '1px solid var(--border)',
+                        background: 'rgba(30,41,59,0.8)',
+                        color: 'white', width: '200px', fontSize: '0.78rem', outline: 'none',
+                      }}
+                    />
+                    <button
+                      onClick={buscarPorIdDirecto}
+                      disabled={loadingDetalle}
+                      style={{
+                        padding: '0.5rem 0.75rem', borderRadius: '8px',
+                        border: '1px solid var(--border)',
+                        background: 'rgba(139,92,246,0.15)',
+                        color: '#a78bfa', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700
+                      }}
+                    >
+                      {loadingDetalle ? '...' : '🔍'}
+                    </button>
+                  </div>
+                  {/* Buscador rápido de texto */}
                   <input
                     type="text"
                     placeholder="Buscador rápido..."
@@ -602,10 +905,10 @@ export default function App() {
                       padding: '0.5rem 1rem', borderRadius: '8px',
                       border: '1px solid var(--border)',
                       background: 'rgba(30,41,59,0.8)',
-                      color: 'white', width: '220px', fontSize: '0.8rem', outline: 'none',
+                      color: 'white', width: '180px', fontSize: '0.8rem', outline: 'none',
                     }}
                   />
-                )}
+                </div>
               </div>
 
               {licitacionesFiltradas.length === 0 ? (
@@ -634,7 +937,7 @@ export default function App() {
                       )}
                       <div className="grid">
                         {lista.map((l, i) => (
-                          <LicitacionCard key={l.CodigoLicitacion || i} licitacion={l} onCopyId={copiarId} />
+                          <LicitacionCard key={l.CodigoLicitacion || i} licitacion={l} onCopyId={copiarId} onVerDetalle={abrirDetalleLicitacion} />
                         ))}
                       </div>
                     </div>
@@ -786,6 +1089,148 @@ export default function App() {
           )}
 
         </main>
+      )}
+
+      {/* ── MODAL DE FICHA DE LICITACIÓN ── */}
+      {detalleSeleccionado && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 2000,
+            background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '1rem', animation: 'slideIn 0.25s ease'
+          }}
+          onClick={e => { if (e.target === e.currentTarget) setDetalleSeleccionado(null) }}
+        >
+          <div style={{
+            width: '100%', maxWidth: '720px', maxHeight: '88vh', overflowY: 'auto',
+            borderRadius: '20px',
+            background: 'linear-gradient(135deg, rgba(15,23,42,0.98), rgba(30,41,59,0.98))',
+            border: '1px solid rgba(139,92,246,0.3)',
+            boxShadow: '0 25px 80px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.04)',
+            padding: '2rem'
+          }}>
+            {/* Cabecera del modal */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', marginBottom: '0.6rem', flexWrap: 'wrap' }}>
+                  <span
+                    style={{
+                      background: 'rgba(139,92,246,0.15)', color: '#a78bfa',
+                      padding: '0.25rem 0.65rem', borderRadius: '8px', fontSize: '0.78rem', fontWeight: 700,
+                      letterSpacing: '0.04em', cursor: 'pointer'
+                    }}
+                    onClick={() => copiarId(detalleSeleccionado.CodigoLicitacion)}
+                    title="Clic para copiar"
+                  >
+                    {detalleSeleccionado.CodigoLicitacion} 📋
+                  </span>
+                  <EstadoBadge codigo={detalleSeleccionado.CodigoEstado || '5'} />
+                  {detalleSeleccionado.Tipo && (
+                    <span style={{ background: 'rgba(96,165,250,0.12)', color: '#60a5fa', padding: '0.2rem 0.55rem', borderRadius: '6px', fontSize: '0.72rem', fontWeight: 600 }}>
+                      {TIPO_MAP[detalleSeleccionado.Tipo] || detalleSeleccionado.Tipo}
+                    </span>
+                  )}
+                </div>
+                <h2 style={{ fontSize: '1.15rem', fontWeight: 700, lineHeight: 1.35, margin: 0 }}>
+                  {detalleSeleccionado.Nombre}
+                </h2>
+              </div>
+              <button
+                onClick={() => setDetalleSeleccionado(null)}
+                style={{
+                  background: 'rgba(255,255,255,0.07)', border: 'none', color: 'white',
+                  width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer',
+                  fontSize: '1rem', lineHeight: 1, flexShrink: 0, marginLeft: '1rem'
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            {/* Descripción */}
+            {detalleSeleccionado.Descripcion && (
+              <div style={{
+                background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: '12px', padding: '1rem 1.25rem', marginBottom: '1.5rem'
+              }}>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-alt)', lineHeight: 1.55, margin: 0 }}>
+                  {detalleSeleccionado.Descripcion}
+                </p>
+              </div>
+            )}
+
+            {/* Metadatos en grilla */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
+              {[
+                { label: '🏢 Organismo', value: detalleSeleccionado.Organismo },
+                { label: '📍 Región / Comuna', value: [detalleSeleccionado.NombreRegion, detalleSeleccionado.Comuna].filter(Boolean).join(' — ') },
+                { label: '💰 Monto Estimado', value: formatMonto(detalleSeleccionado.MontoPesos) || 'No especificado' },
+                { label: '📅 Publicación', value: formatFecha(detalleSeleccionado.FechaPublicacion) },
+                { label: '⏰ Cierre de Ofertas', value: formatFecha(detalleSeleccionado.FechaCierre) },
+                { label: '👤 Responsable', value: detalleSeleccionado.ResponsableContrato },
+              ].filter(m => m.value).map((m, i) => (
+                <div key={i} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: '10px', padding: '0.75rem 1rem', border: '1px solid rgba(255,255,255,0.05)' }}>
+                  <p style={{ fontSize: '0.68rem', color: 'var(--text-alt)', marginBottom: '0.25rem', textTransform: 'uppercase', letterSpacing: '0.06em', fontWeight: 600 }}>{m.label}</p>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', fontWeight: 600, margin: 0 }}>{m.value}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* ÍTEMS / PRODUCTOS */}
+            {detalleSeleccionado.Items && detalleSeleccionado.Items.length > 0 && (
+              <div>
+                <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-alt)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
+                  📦 Ítems Requeridos
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {detalleSeleccionado.Items.map((item, i) => (
+                    <div key={i} style={{
+                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                      background: 'rgba(255,255,255,0.03)', borderRadius: '8px', padding: '0.65rem 1rem',
+                      border: '1px solid rgba(255,255,255,0.05)'
+                    }}>
+                      <span style={{ fontSize: '0.85rem', color: 'var(--text-main)' }}>
+                        {item.Correlativo && <span style={{ color: 'var(--text-alt)', marginRight: '0.4rem' }}>#{item.Correlativo}</span>}
+                        {item.NombreProducto || item.NombreEspanol || 'Producto sin nombre'}
+                      </span>
+                      <span style={{ fontSize: '0.8rem', color: '#a78bfa', fontWeight: 700, flexShrink: 0, marginLeft: '0.5rem' }}>
+                        {item.Cantidad} {item.UnidadMedida}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Botón de cierre inferior */}
+            <div style={{ marginTop: '1.75rem', display: 'flex', gap: '0.75rem', justifyContent: 'flex-end' }}>
+              <a
+                href={`https://www.mercadopublico.cl/Procurement/Modules/RFB/DetailsAcquisition.aspx?qs=${detalleSeleccionado.CodigoLicitacion}`}
+                target="_blank" rel="noreferrer"
+                style={{
+                  padding: '0.55rem 1.2rem', borderRadius: '10px',
+                  background: 'rgba(139,92,246,0.15)', color: '#a78bfa',
+                  border: '1px solid rgba(139,92,246,0.3)', textDecoration: 'none',
+                  fontSize: '0.85rem', fontWeight: 600
+                }}
+              >
+                🔗 Ver en Mercado Público
+              </a>
+              <button
+                onClick={() => setDetalleSeleccionado(null)}
+                style={{
+                  padding: '0.55rem 1.4rem', borderRadius: '10px',
+                  background: 'linear-gradient(135deg, var(--primary), #7c3aed)',
+                  color: 'white', border: 'none', cursor: 'pointer',
+                  fontSize: '0.85rem', fontWeight: 700
+                }}
+              >
+                Cerrar Ficha
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* ── FOOTER ── */}

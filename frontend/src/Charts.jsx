@@ -147,7 +147,7 @@ export function AreaChartCard({ title, data, xKey, yKey, color = '#8b5cf6' }) {
 }
 
 // ── Gráfico de Barras simple (vertical) ───────────────────────────────────────
-export function BarChartVertical({ title, data, xKey, yKey, color = '#8b5cf6', formatter }) {
+export function BarChartVertical({ title, data, xKey, yKey, formatter }) {
   return (
     <div className="glass card" style={{ padding: '1.5rem' }}>
       <h4 style={{ marginBottom: '1.25rem', fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-alt)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
