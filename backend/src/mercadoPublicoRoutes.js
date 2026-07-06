@@ -19,6 +19,7 @@
 
 const express = require('express');
 const service = require('./mercadoPublicoService');
+const iaService = require('./iaService');
 
 const router = express.Router();
 
@@ -149,6 +150,40 @@ router.get('/licitaciones/:id', asyncHandler(async (req, res) => {
 
   const detalle = await service.getLicitacionById(id);
   res.json({ status: 'success', detalle });
+}));
+
+/**
+ * POST /api/mp/licitaciones/recomendar
+ * Recibe una lista de licitaciones y el perfil de la empresa y devuelve las recomendaciones de la IA.
+ *
+ * Payload:
+ * {
+ *   "licitaciones": [ { ... } ],
+ *   "perfilEmpresa": "Desarrollo de software y consultoría"
+ * }
+ */
+router.post('/licitaciones/recomendar', asyncHandler(async (req, res) => {
+  const { licitaciones, perfilEmpresa } = req.body;
+
+  if (!licitaciones || !Array.isArray(licitaciones)) {
+    return res.status(400).json({
+      status: 'error',
+      mensaje: 'El parámetro "licitaciones" es requerido y debe ser un arreglo.'
+    });
+  }
+
+  if (!perfilEmpresa || typeof perfilEmpresa !== 'string') {
+    return res.status(400).json({
+      status: 'error',
+      mensaje: 'El parámetro "perfilEmpresa" es requerido y debe ser un string.'
+    });
+  }
+
+  const recomendaciones = await iaService.obtenerRecomendaciones(licitaciones, perfilEmpresa);
+  res.json({
+    status: 'success',
+    recomendaciones
+  });
 }));
 
 // ──────────────────────────────────────────────────────────────────────────────
