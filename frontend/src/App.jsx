@@ -364,26 +364,39 @@ function ApiTipBanner({ idCopiadoReciente }) {
   const [visible, setVisible]     = useState(true)
   const [animando, setAnimando]   = useState(false)
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    const interval = setInterval(() => {
-      setAnimando(true)
-      setTimeout(() => {
-        setTipActual(prev => (prev + 1) % API_TIPS.length)
-        setAnimando(false)
-      }, 200)
-    }, 7000)
+    const interval = setInterval(() => navegar(1), 7000)
     return () => clearInterval(interval)
-  }, [])
+  }, [tipActual])
+
+  const navegar = (dir) => {
+    setAnimando(true)
+    setTimeout(() => {
+      setTipActual(prev => (prev + dir + API_TIPS.length) % API_TIPS.length)
+      setAnimando(false)
+    }, 180)
+  }
 
   const irATip = (i) => {
     if (i === tipActual) return
     setAnimando(true)
-    setTimeout(() => { setTipActual(i); setAnimando(false) }, 200)
+    setTimeout(() => { setTipActual(i); setAnimando(false) }, 180)
   }
 
   if (!visible) return null
 
   const tip = API_TIPS[tipActual]
+
+  const navBtn = (extra = {}) => ({
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+    width: '30px', height: '30px', borderRadius: '8px',
+    background: 'rgba(139,92,246,0.1)',
+    border: '1px solid rgba(139,92,246,0.22)',
+    color: '#a78bfa', cursor: 'pointer', fontSize: '1.1rem', fontWeight: 700,
+    transition: 'background 0.15s', flexShrink: 0, lineHeight: 1,
+    ...extra,
+  })
 
   return (
     <div style={{
@@ -392,108 +405,130 @@ function ApiTipBanner({ idCopiadoReciente }) {
       borderRadius: '14px',
       padding: '1rem 1.25rem',
       marginBottom: '1.5rem',
-      display: 'flex',
-      alignItems: 'center',
-      gap: '1rem',
     }}>
-      {/* Ícono */}
-      <span style={{
-        fontSize: '1.6rem', flexShrink: 0,
-        opacity: animando ? 0 : 1,
-        transition: 'opacity 0.2s ease',
-      }}>
-        {tip.icon}
-      </span>
 
-      {/* Contenido */}
-      <div style={{
-        flex: 1, minWidth: 0,
-        opacity: animando ? 0 : 1,
-        transition: 'opacity 0.2s ease',
-      }}>
-        {/* Header: badge + dots */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
-          <span style={{
-            fontSize: '0.58rem', color: '#a78bfa', fontWeight: 700,
-            textTransform: 'uppercase', letterSpacing: '0.1em',
-          }}>
-            💡 Capacidad de API
-          </span>
-          {/* Dots de navegación */}
-          <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
-            {API_TIPS.map((_, i) => (
-              <div
-                key={i}
-                onClick={() => irATip(i)}
-                style={{
-                  width: i === tipActual ? '16px' : '5px',
-                  height: '5px',
-                  borderRadius: '3px',
-                  background: i === tipActual ? '#a78bfa' : 'rgba(139,92,246,0.22)',
-                  transition: 'all 0.35s ease',
-                  cursor: 'pointer',
-                }}
-              />
-            ))}
-          </div>
-          <span style={{ fontSize: '0.6rem', color: 'var(--text-alt)' }}>
-            {tipActual + 1}/{API_TIPS.length}
-          </span>
+      {/* ── Fila de controles: badge · flex · ‹ dots › · contador · ✕ ── */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginBottom: '0.8rem', flexWrap: 'wrap' }}>
+
+        {/* Badge */}
+        <span style={{
+          fontSize: '0.6rem', color: '#a78bfa', fontWeight: 700,
+          textTransform: 'uppercase', letterSpacing: '0.1em',
+          background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.2)',
+          borderRadius: '5px', padding: '0.15rem 0.5rem', whiteSpace: 'nowrap',
+        }}>
+          💡 Capacidades de la API
+        </span>
+
+        <div style={{ flex: 1 }} />
+
+        {/* Botón anterior */}
+        <button
+          onClick={() => navegar(-1)}
+          style={navBtn()}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.22)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.1)' }}
+          title="Anterior"
+        >
+          ‹
+        </button>
+
+        {/* Dots clicables */}
+        <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+          {API_TIPS.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => irATip(i)}
+              title={API_TIPS[i].titulo}
+              style={{
+                width: i === tipActual ? '22px' : '8px',
+                height: '8px', borderRadius: '4px', border: 'none', padding: 0,
+                background: i === tipActual ? '#a78bfa' : 'rgba(139,92,246,0.2)',
+                cursor: 'pointer', transition: 'all 0.3s ease',
+              }}
+            />
+          ))}
         </div>
 
-        {/* Título */}
-        <p style={{ fontWeight: 700, fontSize: '0.88rem', margin: '0 0 0.15rem', color: 'var(--text-main)' }}>
-          {tip.titulo}
-        </p>
+        {/* Contador */}
+        <span style={{
+          fontSize: '0.65rem', color: 'var(--text-alt)',
+          fontVariantNumeric: 'tabular-nums', minWidth: '26px', textAlign: 'center',
+        }}>
+          {tipActual + 1}/{API_TIPS.length}
+        </span>
 
-        {/* Descripción */}
-        <p style={{ fontSize: '0.77rem', color: 'var(--text-alt)', margin: '0 0 0.5rem', lineHeight: '1.4' }}>
-          {tip.desc}
-        </p>
+        {/* Botón siguiente */}
+        <button
+          onClick={() => navegar(1)}
+          style={navBtn()}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.22)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.1)' }}
+          title="Siguiente"
+        >
+          ›
+        </button>
 
-        {/* Endpoint + campo + ejemplo */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <code style={{
-            fontSize: '0.67rem', color: '#34d399',
-            background: 'rgba(52,211,153,0.08)',
-            border: '1px solid rgba(52,211,153,0.15)',
-            borderRadius: '5px', padding: '0.18rem 0.5rem',
-            fontFamily: 'monospace', letterSpacing: '0.02em',
-          }}>
-            {tip.endpoint}
-          </code>
-          <span style={{ fontSize: '0.67rem', color: '#60a5fa', fontFamily: 'monospace' }}>
-            {tip.campo}
-          </span>
-          {idCopiadoReciente && (
-            <span style={{
-              fontSize: '0.63rem', color: '#fbbf24',
-              background: 'rgba(251,191,36,0.08)',
-              border: '1px solid rgba(251,191,36,0.2)',
-              borderRadius: '4px', padding: '0.1rem 0.4rem',
-              fontWeight: 600,
+        {/* Botón cerrar */}
+        <button
+          onClick={() => setVisible(false)}
+          style={navBtn({ background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'var(--text-alt)', fontSize: '0.85rem' })}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.1)'; e.currentTarget.style.color = 'var(--text-main)' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; e.currentTarget.style.color = 'var(--text-alt)' }}
+          title="Cerrar"
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* ── Cuerpo: ícono + texto ── */}
+      <div style={{
+        display: 'flex', alignItems: 'flex-start', gap: '0.9rem',
+        opacity: animando ? 0 : 1, transition: 'opacity 0.18s ease',
+      }}>
+        {/* Ícono en píldora */}
+        <span style={{
+          fontSize: '1.7rem', flexShrink: 0, lineHeight: 1,
+          background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.18)',
+          borderRadius: '10px', padding: '0.35rem 0.45rem',
+        }}>
+          {tip.icon}
+        </span>
+
+        {/* Texto */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <p style={{ fontWeight: 700, fontSize: '0.9rem', margin: '0 0 0.2rem', color: 'var(--text-main)' }}>
+            {tip.titulo}
+          </p>
+          <p style={{ fontSize: '0.77rem', color: 'var(--text-alt)', margin: '0 0 0.55rem', lineHeight: '1.45' }}>
+            {tip.desc}
+          </p>
+
+          {/* Endpoint + campo + badge ID */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+            <code style={{
+              fontSize: '0.67rem', color: '#34d399',
+              background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.15)',
+              borderRadius: '6px', padding: '0.22rem 0.55rem', fontFamily: 'monospace',
             }}>
-              ⚡ Tienes un ID listo para probar
+              {tip.endpoint}
+            </code>
+            <span style={{ fontSize: '0.67rem', color: '#60a5fa', fontFamily: 'monospace' }}>
+              {tip.campo}
             </span>
-          )}
+            {idCopiadoReciente && (
+              <span style={{
+                fontSize: '0.63rem', color: '#fbbf24',
+                background: 'rgba(251,191,36,0.08)', border: '1px solid rgba(251,191,36,0.2)',
+                borderRadius: '5px', padding: '0.15rem 0.45rem', fontWeight: 600,
+              }}>
+                ⚡ ID listo para probar
+              </span>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Botón cerrar */}
-      <button
-        onClick={() => setVisible(false)}
-        title="Cerrar"
-        style={{
-          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)',
-          color: 'var(--text-alt)', cursor: 'pointer', fontSize: '0.85rem',
-          flexShrink: 0, padding: '0.2rem 0.45rem', borderRadius: '6px',
-          lineHeight: 1, transition: 'all 0.2s',
-        }}
-        onMouseEnter={e => e.currentTarget.style.color = 'var(--text-main)'}
-        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-alt)'}
-      >
-        ×
-      </button>
     </div>
   )
 }
