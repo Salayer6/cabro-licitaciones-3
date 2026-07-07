@@ -163,7 +163,7 @@ router.get('/licitaciones/:id', asyncHandler(async (req, res) => {
  * }
  */
 router.post('/licitaciones/recomendar', asyncHandler(async (req, res) => {
-  const { licitaciones, perfilEmpresa } = req.body;
+  const { licitaciones, perfilEmpresa, usarIA = false } = req.body;
 
   if (!licitaciones || !Array.isArray(licitaciones)) {
     return res.status(400).json({
@@ -179,7 +179,7 @@ router.post('/licitaciones/recomendar', asyncHandler(async (req, res) => {
     });
   }
 
-  const recomendaciones = await iaService.obtenerRecomendaciones(licitaciones, perfilEmpresa);
+  const recomendaciones = await iaService.obtenerRecomendaciones(licitaciones, perfilEmpresa, { usarIA });
   res.json({
     status: 'success',
     recomendaciones

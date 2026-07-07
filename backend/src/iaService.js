@@ -189,7 +189,15 @@ async function analizarConGemini(licitaciones, perfilEmpresa) {
  * @param {string} perfilEmpresa - Perfil comercial de la empresa
  * @returns {Promise<Array>} Lista de licitaciones evaluadas
  */
-async function obtenerRecomendaciones(licitaciones, perfilEmpresa) {
+/**
+ * @param {Array}  licitaciones
+ * @param {string} perfilEmpresa
+ * @param {Object} opciones
+ * @param {boolean} opciones.usarIA - true = Gemini (consume tokens), false = heurístico local (sin costo)
+ */
+async function obtenerRecomendaciones(licitaciones, perfilEmpresa, opciones = {}) {
+  const { usarIA = false } = opciones;
+
   if (!licitaciones || licitaciones.length === 0) {
     return [];
   }
@@ -197,16 +205,19 @@ async function obtenerRecomendaciones(licitaciones, perfilEmpresa) {
     throw new Error('El perfil de la empresa es obligatorio para poder analizar.');
   }
 
-  if (GEMINI_API_KEY) {
-    try {
-      console.log('[iaService] Iniciando análisis con Gemini 1.5 Flash...');
-      return await analizarConGemini(licitaciones, perfilEmpresa);
-    } catch (err) {
-      console.error('[iaService] Falló el análisis con Gemini, usando motor heurístico local:', err.message);
-      return analizarHeuristico(licitaciones, perfilEmpresa);
-    }
-  } else {
-    console.log('[iaService] Sin GEMINI_API_KEY configurado. Usando motor heurístico local.');
+  // Motor heurístico: sin GEMINI_API_KEY, o cuando el usuario elige ahorrar tokens
+  if (!usarIA || !GEMINI_API_KEY) {
+    const motivo = !usarIA ? 'toggle desactivado (ahorro de tokens)' : 'sin GEMINI_API_KEY configurado';
+    console.log(`[iaService] Usando motor heurístico local (${motivo}).`);
+    return analizarHeuristico(licitaciones, perfilEmpresa);
+  }
+
+  // Motor Gemini: solo cuando usarIA=true y hay API key
+  try {
+    console.log('[iaService] Iniciando análisis con Gemini 1.5 Flash...');
+    return await analizarConGemini(licitaciones, perfilEmpresa);
+  } catch (err) {
+    console.error('[iaService] Falló Gemini, usando heurístico como fallback:', err.message);
     return analizarHeuristico(licitaciones, perfilEmpresa);
   }
 }

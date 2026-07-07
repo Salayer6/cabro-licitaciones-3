@@ -290,6 +290,75 @@ function LicitacionCard({ licitacion, onCopyId, onVerDetalle }) {
 // COMPONENTE: Banner educativo de capacidades de la API (carrusel auto-rotativo)
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTE: Toggle switch reutilizable
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ToggleSwitch({ on, onChange, labelOff, labelOn, descOn, descOff }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.75rem' }}>
+        {/* Label izquierda */}
+        <span style={{
+          fontSize: '0.8rem',
+          color: on ? 'var(--text-alt)' : 'var(--text-main)',
+          fontWeight: on ? 400 : 700,
+          transition: 'all 0.2s',
+        }}>
+          {labelOff}
+        </span>
+
+        {/* Track */}
+        <button
+          onClick={() => onChange(!on)}
+          style={{
+            width: '48px', height: '26px', borderRadius: '13px', padding: '3px',
+            background: on ? 'rgba(139,92,246,0.5)' : 'rgba(255,255,255,0.08)',
+            border: `1px solid ${on ? 'rgba(139,92,246,0.7)' : 'rgba(255,255,255,0.12)'}`,
+            cursor: 'pointer', display: 'flex', alignItems: 'center',
+            transition: 'all 0.25s ease', flexShrink: 0,
+          }}
+          aria-checked={on}
+          role="switch"
+        >
+          {/* Knob */}
+          <div style={{
+            width: '18px', height: '18px', borderRadius: '50%',
+            background: on ? '#a78bfa' : 'rgba(255,255,255,0.45)',
+            transform: on ? 'translateX(22px)' : 'translateX(0)',
+            transition: 'all 0.25s ease',
+            boxShadow: '0 1px 4px rgba(0,0,0,0.35)',
+            flexShrink: 0,
+          }} />
+        </button>
+
+        {/* Label derecha */}
+        <span style={{
+          fontSize: '0.8rem',
+          color: on ? 'var(--text-main)' : 'var(--text-alt)',
+          fontWeight: on ? 700 : 400,
+          transition: 'all 0.2s',
+        }}>
+          {labelOn}
+        </span>
+      </div>
+
+      {/* Descripción del modo activo */}
+      {(descOn || descOff) && (
+        <p style={{
+          fontSize: '0.73rem',
+          color: 'var(--text-alt)',
+          margin: 0,
+          paddingLeft: '0.1rem',
+          lineHeight: '1.4',
+        }}>
+          {on ? descOn : descOff}
+        </p>
+      )}
+    </div>
+  )
+}
+
 function ApiTipBanner({ idCopiadoReciente }) {
   const [tipActual, setTipActual] = useState(0)
   const [visible, setVisible]     = useState(true)
@@ -651,6 +720,8 @@ export default function App() {
   const [perfilEmpresa, setPerfilEmpresa] = useState(() => {
     return localStorage.getItem('perfil_empresa') || ''
   })
+  // false = motor heurístico local (sin tokens) | true = Gemini IA (consume tokens)
+  const [usarIA, setUsarIA] = useState(false)
   const [recomendaciones, setRecomendaciones] = useState([])
   const [loadingIA, setLoadingIA] = useState(false)
 
@@ -736,7 +807,8 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           licitaciones,
-          perfilEmpresa
+          perfilEmpresa,
+          usarIA,
         })
       })
       const data = await res.json()
@@ -1310,19 +1382,48 @@ export default function App() {
                   }}
                 />
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '0.8rem', color: 'var(--text-alt)' }}>
-                    Se analiza sobre el listado actual ({licitaciones.length} licitaciones).
-                  </span>
+                {/* ── Toggle IA / Heurístico ── */}
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
+                  flexWrap: 'wrap', gap: '1rem',
+                  paddingTop: '1rem',
+                  borderTop: '1px solid rgba(255,255,255,0.06)',
+                }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    <ToggleSwitch
+                      on={usarIA}
+                      onChange={setUsarIA}
+                      labelOff="🔧 Heurístico"
+                      labelOn="✨ IA Gemini"
+                      descOff={`Motor local de palabras clave · sin costo de tokens · ${licitaciones.length} licitaciones a analizar`}
+                      descOn={`Gemini 1.5 Flash · análisis semántico profundo · consume tokens API · ${licitaciones.length} licitaciones a analizar`}
+                    />
+                    {/* Badge de advertencia de costo cuando IA está ON */}
+                    {usarIA && (
+                      <div style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '0.4rem',
+                        background: 'rgba(251,191,36,0.08)',
+                        border: '1px solid rgba(251,191,36,0.2)',
+                        borderRadius: '7px', padding: '0.3rem 0.7rem',
+                        fontSize: '0.72rem', color: '#fbbf24', fontWeight: 600,
+                        width: 'fit-content',
+                        animation: 'slideIn 0.2s ease',
+                      }}>
+                        ⚠️ Cada análisis llama a la API de Gemini. Usa con criterio.
+                      </div>
+                    )}
+                  </div>
+
                   <button
                     className="btn btn-primary"
                     onClick={analizarConIA}
                     disabled={loadingIA || licitaciones.length === 0}
+                    style={{ flexShrink: 0, alignSelf: 'flex-end' }}
                   >
                     {loadingIA ? (
-                      <><div className="loading-spinner" />&nbsp;Analizando con IA...</>
+                      <><div className="loading-spinner" />&nbsp;{usarIA ? 'Consultando Gemini...' : 'Analizando...'}</>
                     ) : (
-                      '✨ Analizar Oportunidades'
+                      usarIA ? '✨ Analizar con IA' : '🔧 Analizar con Heurístico'
                     )}
                   </button>
                 </div>
