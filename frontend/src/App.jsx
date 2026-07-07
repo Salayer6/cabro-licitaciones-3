@@ -752,7 +752,27 @@ export default function App() {
       const res  = await fetch('/api/mp/licitaciones/hoy')
       const data = await res.json()
       if (!res.ok || data.status === 'error') throw new Error(data.mensaje || `Error HTTP ${res.status}`)
-      setLicitaciones(data.Listado || [])
+
+      const listado = data.Listado || []
+
+      // Si hoy no tiene licitaciones (fuera de horario hábil), cargamos automáticamente ayer
+      if (listado.length === 0) {
+        const ayer = new Date()
+        ayer.setDate(ayer.getDate() - 1)
+        const ayerStr = ayer.toISOString().split('T')[0]
+        const resAyer = await fetch(`/api/mp/licitaciones/rango?desde=${ayerStr}&hasta=${ayerStr}`)
+        const dataAyer = await resAyer.json()
+        if (resAyer.ok && dataAyer.status !== 'error' && (dataAyer.Listado || []).length > 0) {
+          setLicitaciones(dataAyer.Listado)
+          setModoFiltroFecha('rango')
+          setFechaDesde(ayerStr)
+          setFechaHasta(ayerStr)
+          mostrarToast(`📅 Sin publicaciones hoy — mostrando ${dataAyer.Cantidad} licitaciones de ayer`, 'info')
+          return
+        }
+      }
+
+      setLicitaciones(listado)
       mostrarToast(`✅ ${data.Cantidad} licitaciones cargadas`, 'success')
     } catch (err) {
       setError(err.message)
