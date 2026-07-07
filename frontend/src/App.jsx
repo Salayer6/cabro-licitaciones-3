@@ -24,6 +24,53 @@ const TIPO_MAP = {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// TIPS EDUCATIVOS DE LA API (carrusel en el tab de licitaciones)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const API_TIPS = [
+  {
+    icon: '📦',
+    titulo: 'Ítems y productos requeridos',
+    desc: 'El detalle de cada licitación expone exactamente qué pide el organismo: nombre del producto, cantidad y unidad de medida.',
+    endpoint: 'GET /api/mp/licitaciones/{id}',
+    campo: '→ detalle.Items[]',
+    ejemplo: 'NombreProducto · Cantidad · UnidadMedida',
+  },
+  {
+    icon: '👤',
+    titulo: 'Responsable del contrato',
+    desc: 'Cada ficha incluye el nombre y cargo del funcionario responsable: el contacto clave antes de postular.',
+    endpoint: 'GET /api/mp/licitaciones/{id}',
+    campo: '→ detalle.ResponsableContrato',
+    ejemplo: '"Juan Pérez - Jefe de Adquisiciones"',
+  },
+  {
+    icon: '📄',
+    titulo: 'Descripción técnica completa',
+    desc: 'La API entrega el texto largo con los requisitos técnicos específicos, ideal para evaluar factibilidad antes de postular.',
+    endpoint: 'GET /api/mp/licitaciones/{id}',
+    campo: '→ detalle.Descripcion',
+    ejemplo: 'Texto libre con especificaciones y alcances',
+  },
+  {
+    icon: '🗺️',
+    titulo: 'Región y comuna de ejecución',
+    desc: 'Ubica exactamente dónde se ejecutará el contrato. Útil para filtrar oportunidades por zona geográfica.',
+    endpoint: 'GET /api/mp/licitaciones/{id}',
+    campo: '→ detalle.NombreRegion · detalle.Comuna',
+    ejemplo: '"Región Metropolitana · Las Condes"',
+  },
+  {
+    icon: '📅',
+    titulo: 'Análisis histórico por rango',
+    desc: 'Consulta licitaciones de cualquier período pasado para detectar patrones de compra, organismos recurrentes y adjudicaciones anteriores.',
+    endpoint: 'GET /api/mp/licitaciones/rango?desde=&hasta=',
+    campo: '→ Cantidad · Listado[]',
+    ejemplo: 'desde=2026-01-01&hasta=2026-06-30',
+  },
+]
+
+// ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -70,34 +117,59 @@ function LicitacionCard({ licitacion, onCopyId, onVerDetalle }) {
   const l = licitacion
   const monto = formatMonto(l.MontoPesos)
   const tipo = TIPO_MAP[l.Tipo] || l.Tipo
+  const [copied, setCopied] = useState(false)
+
+  const handleCopy = () => {
+    onCopyId(l.CodigoLicitacion)
+    setCopied(true)
+    setTimeout(() => setCopied(false), 3000)
+  }
 
   return (
     <div className="glass card card-hover" style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
-        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-          <span
-            className="badge badge-orange"
-            style={{ cursor: 'pointer', fontWeight: 'bold', fontSize: '0.72rem' }}
-            onClick={() => onCopyId(l.CodigoLicitacion)}
+        <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+
+          {/* Badge de ID con copia rápida */}
+          <button
+            onClick={handleCopy}
             title="Clic para copiar ID"
+            style={{
+              display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
+              background: copied ? 'rgba(34,197,94,0.18)' : 'rgba(249,115,22,0.15)',
+              color: copied ? '#4ade80' : '#fb923c',
+              border: `1px solid ${copied ? 'rgba(34,197,94,0.4)' : 'rgba(249,115,22,0.35)'}`,
+              borderRadius: '7px', padding: '0.2rem 0.55rem',
+              fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
+              transition: 'all 0.2s', letterSpacing: '0.03em',
+              fontFamily: 'monospace',
+            }}
           >
-            {l.CodigoLicitacion || 'N/A'} 📋
-          </span>
-          <button 
+            {copied ? '✓ Copiado!' : l.CodigoLicitacion || 'N/A'}
+            {!copied && (
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+            )}
+          </button>
+
+          {/* Botón ficha detallada */}
+          <button
             onClick={() => onVerDetalle(l.CodigoLicitacion)}
             style={{
               background: 'rgba(255,255,255,0.05)',
               border: '1px solid var(--border)',
-              color: 'var(--text-main)',
-              padding: '0.15rem 0.4rem',
+              color: 'var(--text-alt)',
+              padding: '0.2rem 0.5rem',
               borderRadius: '6px',
               fontSize: '0.65rem',
               cursor: 'pointer',
               fontWeight: 600,
-              transition: 'background 0.2s'
+              transition: 'all 0.2s',
             }}
-            onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
-            onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.05)'}
+            onMouseEnter={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.12)'; e.currentTarget.style.color = '#a78bfa'; e.currentTarget.style.borderColor = 'rgba(139,92,246,0.4)' }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; e.currentTarget.style.color = 'var(--text-alt)'; e.currentTarget.style.borderColor = 'var(--border)' }}
           >
             🔍 Ficha
           </button>
@@ -127,6 +199,232 @@ function LicitacionCard({ licitacion, onCopyId, onVerDetalle }) {
           <p style={{ fontSize: '0.75rem', color: 'var(--text-main)' }}>{formatFecha(l.FechaCierre)}</p>
         </div>
       </div>
+
+      {/* ── BARRA DE ID + COPIA (zona de acción principal) ── */}
+      <div style={{
+        marginTop: '0.75rem',
+        paddingTop: '0.75rem',
+        borderTop: '1px solid rgba(255,255,255,0.05)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '0.5rem',
+      }}>
+        {/* Label */}
+        <span style={{
+          fontSize: '0.58rem', color: 'var(--text-alt)', fontWeight: 700,
+          textTransform: 'uppercase', letterSpacing: '0.08em', flexShrink: 0,
+        }}>ID</span>
+
+        {/* ID en monospace */}
+        <code style={{
+          fontSize: '0.73rem', color: '#fb923c', fontFamily: 'monospace',
+          flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+          background: 'rgba(249,115,22,0.06)',
+          border: '1px solid rgba(249,115,22,0.12)',
+          borderRadius: '5px', padding: '0.15rem 0.45rem',
+          letterSpacing: '0.03em',
+        }}>
+          {l.CodigoLicitacion || 'N/A'}
+        </code>
+
+        {/* Botón copiar prominente */}
+        <button
+          onClick={handleCopy}
+          title={copied ? 'ID copiado al portapapeles' : 'Copiar ID de licitación'}
+          style={{
+            display: 'inline-flex', alignItems: 'center', gap: '0.28rem',
+            background: copied ? 'rgba(34,197,94,0.15)' : 'rgba(249,115,22,0.12)',
+            color: copied ? '#4ade80' : '#fb923c',
+            border: `1px solid ${copied ? 'rgba(34,197,94,0.35)' : 'rgba(249,115,22,0.3)'}`,
+            borderRadius: '7px', padding: '0.3rem 0.7rem',
+            fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer',
+            transition: 'all 0.2s', whiteSpace: 'nowrap', flexShrink: 0,
+          }}
+          onMouseEnter={e => { if (!copied) { e.currentTarget.style.background = 'rgba(249,115,22,0.2)' } }}
+          onMouseLeave={e => { if (!copied) { e.currentTarget.style.background = 'rgba(249,115,22,0.12)' } }}
+        >
+          {copied ? (
+            <>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
+              Copiado
+            </>
+          ) : (
+            <>
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <rect x="9" y="9" width="13" height="13" rx="2"/>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              Copiar ID
+            </>
+          )}
+        </button>
+      </div>
+
+      {/* Hint de endpoint POST-COPIA */}
+      {copied && (
+        <div style={{
+          marginTop: '0.4rem',
+          padding: '0.45rem 0.75rem',
+          background: 'rgba(52,211,153,0.06)',
+          border: '1px solid rgba(52,211,153,0.12)',
+          borderRadius: '8px',
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem',
+          animation: 'slideIn 0.2s ease',
+          flexWrap: 'wrap',
+        }}>
+          <code style={{ fontSize: '0.64rem', color: '#34d399', fontFamily: 'monospace', flex: 1 }}>
+            GET /api/mp/licitaciones/<strong>{l.CodigoLicitacion}</strong>
+          </code>
+          <span style={{ fontSize: '0.6rem', color: 'var(--text-alt)', whiteSpace: 'nowrap' }}>
+            ítems · responsable · descripción
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COMPONENTE: Banner educativo de capacidades de la API (carrusel auto-rotativo)
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ApiTipBanner({ idCopiadoReciente }) {
+  const [tipActual, setTipActual] = useState(0)
+  const [visible, setVisible]     = useState(true)
+  const [animando, setAnimando]   = useState(false)
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAnimando(true)
+      setTimeout(() => {
+        setTipActual(prev => (prev + 1) % API_TIPS.length)
+        setAnimando(false)
+      }, 200)
+    }, 7000)
+    return () => clearInterval(interval)
+  }, [])
+
+  const irATip = (i) => {
+    if (i === tipActual) return
+    setAnimando(true)
+    setTimeout(() => { setTipActual(i); setAnimando(false) }, 200)
+  }
+
+  if (!visible) return null
+
+  const tip = API_TIPS[tipActual]
+
+  return (
+    <div style={{
+      background: 'linear-gradient(135deg, rgba(139,92,246,0.07) 0%, rgba(59,130,246,0.05) 100%)',
+      border: '1px solid rgba(139,92,246,0.2)',
+      borderRadius: '14px',
+      padding: '1rem 1.25rem',
+      marginBottom: '1.5rem',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '1rem',
+    }}>
+      {/* Ícono */}
+      <span style={{
+        fontSize: '1.6rem', flexShrink: 0,
+        opacity: animando ? 0 : 1,
+        transition: 'opacity 0.2s ease',
+      }}>
+        {tip.icon}
+      </span>
+
+      {/* Contenido */}
+      <div style={{
+        flex: 1, minWidth: 0,
+        opacity: animando ? 0 : 1,
+        transition: 'opacity 0.2s ease',
+      }}>
+        {/* Header: badge + dots */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.25rem', flexWrap: 'wrap' }}>
+          <span style={{
+            fontSize: '0.58rem', color: '#a78bfa', fontWeight: 700,
+            textTransform: 'uppercase', letterSpacing: '0.1em',
+          }}>
+            💡 Capacidad de API
+          </span>
+          {/* Dots de navegación */}
+          <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+            {API_TIPS.map((_, i) => (
+              <div
+                key={i}
+                onClick={() => irATip(i)}
+                style={{
+                  width: i === tipActual ? '16px' : '5px',
+                  height: '5px',
+                  borderRadius: '3px',
+                  background: i === tipActual ? '#a78bfa' : 'rgba(139,92,246,0.22)',
+                  transition: 'all 0.35s ease',
+                  cursor: 'pointer',
+                }}
+              />
+            ))}
+          </div>
+          <span style={{ fontSize: '0.6rem', color: 'var(--text-alt)' }}>
+            {tipActual + 1}/{API_TIPS.length}
+          </span>
+        </div>
+
+        {/* Título */}
+        <p style={{ fontWeight: 700, fontSize: '0.88rem', margin: '0 0 0.15rem', color: 'var(--text-main)' }}>
+          {tip.titulo}
+        </p>
+
+        {/* Descripción */}
+        <p style={{ fontSize: '0.77rem', color: 'var(--text-alt)', margin: '0 0 0.5rem', lineHeight: '1.4' }}>
+          {tip.desc}
+        </p>
+
+        {/* Endpoint + campo + ejemplo */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+          <code style={{
+            fontSize: '0.67rem', color: '#34d399',
+            background: 'rgba(52,211,153,0.08)',
+            border: '1px solid rgba(52,211,153,0.15)',
+            borderRadius: '5px', padding: '0.18rem 0.5rem',
+            fontFamily: 'monospace', letterSpacing: '0.02em',
+          }}>
+            {tip.endpoint}
+          </code>
+          <span style={{ fontSize: '0.67rem', color: '#60a5fa', fontFamily: 'monospace' }}>
+            {tip.campo}
+          </span>
+          {idCopiadoReciente && (
+            <span style={{
+              fontSize: '0.63rem', color: '#fbbf24',
+              background: 'rgba(251,191,36,0.08)',
+              border: '1px solid rgba(251,191,36,0.2)',
+              borderRadius: '4px', padding: '0.1rem 0.4rem',
+              fontWeight: 600,
+            }}>
+              ⚡ Tienes un ID listo para probar
+            </span>
+          )}
+        </div>
+      </div>
+
+      {/* Botón cerrar */}
+      <button
+        onClick={() => setVisible(false)}
+        title="Cerrar"
+        style={{
+          background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)',
+          color: 'var(--text-alt)', cursor: 'pointer', fontSize: '0.85rem',
+          flexShrink: 0, padding: '0.2rem 0.45rem', borderRadius: '6px',
+          lineHeight: 1, transition: 'all 0.2s',
+        }}
+        onMouseEnter={e => e.currentTarget.style.color = 'var(--text-main)'}
+        onMouseLeave={e => e.currentTarget.style.color = 'var(--text-alt)'}
+      >
+        ×
+      </button>
     </div>
   )
 }
@@ -346,6 +644,9 @@ export default function App() {
   const [agruparPor, setAgruparPor] = useState('sin') // 'sin', 'organismo', 'estado', 'tipo'
   const [mostrarFiltros, setMostrarFiltros] = useState(true) // Expandido por defecto
 
+  // Banner educativo: indica que hay un ID copiado recientemente
+  const [idCopiadoReciente, setIdCopiadoReciente] = useState(false)
+
   // IA Recomendador
   const [perfilEmpresa, setPerfilEmpresa] = useState(() => {
     return localStorage.getItem('perfil_empresa') || ''
@@ -523,8 +824,31 @@ export default function App() {
 
   const copiarId = (id) => {
     if (!id) return
-    navigator.clipboard.writeText(id)
-    mostrarToast(`📋 ID copiado: ${id}`, 'copy')
+    // Fallback para contextos sin permisos de clipboard (HTTP no seguro)
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(id).catch(() => copiarIdFallback(id))
+      } else {
+        copiarIdFallback(id)
+      }
+    } catch {
+      copiarIdFallback(id)
+    }
+    mostrarToast(`📋 ${id}`, 'success')
+    // Activa el badge "tienes un ID listo" en el banner educativo por 8s
+    setIdCopiadoReciente(true)
+    setTimeout(() => setIdCopiadoReciente(false), 8000)
+  }
+
+  const copiarIdFallback = (id) => {
+    const el = document.createElement('textarea')
+    el.value = id
+    el.style.position = 'fixed'
+    el.style.opacity = '0'
+    document.body.appendChild(el)
+    el.select()
+    document.execCommand('copy')
+    document.body.removeChild(el)
   }
 
   // ── Lógica de filtrado en cliente ──────────────────────────────────────────
@@ -859,6 +1183,9 @@ export default function App() {
           {/* ── TAB: LICITACIONES ── */}
           {activeTab === 'licitaciones' && (
             <>
+              {/* Banner educativo de capacidades de la API */}
+              <ApiTipBanner idCopiadoReciente={idCopiadoReciente} />
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
                 <div className="section-title" style={{ margin: 0 }}>
                   <h2>{modoFiltroFecha === 'hoy' ? 'Licitaciones de Hoy' : 'Licitaciones del Rango'}</h2>
