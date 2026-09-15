@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import AnalyticsView from './AnalyticsView.jsx'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -14,13 +14,26 @@ const ESTADO_MAP = {
 }
 
 const TIPO_MAP = {
+  'L1':  'Lic. < 100 UTM',
   'LS1': 'Lic. < 100 UTM',
   'LP':  'Prop. Pública',
   'LQ':  'Lic. > 1000 UTM',
   'LE':  'Lic. < 1000 UTM',
   'CO':  'Conv. Marco',
   'B':   'Compra Directa',
+  'B2':  'Compra Directa',
   'E':   'Compra Ágil',
+  'E2':  'Compra Ágil',
+}
+
+/**
+ * Deduce el tipo de licitación a partir de la nomenclatura del código MP
+ * Formato: [ID_COMPRADOR]-[CORRELATIVO]-[TIPO][AÑO] (ej: 1509-5-L114, 1290-44-E26)
+ */
+function deducirTipoDeCodigo(codigo) {
+  if (!codigo || typeof codigo !== 'string') return null
+  const match = codigo.match(/-([A-Za-z]+[0-9]*)\d{2}$/)
+  return match ? match[1].toUpperCase() : null
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -115,12 +128,14 @@ function EstadoBadge({ codigo }) {
 
 function LicitacionCard({ licitacion, onCopyId, onVerDetalle }) {
   const l = licitacion
+  const codigo = l.CodigoLicitacion || l.CodigoExterno || 'N/A'
   const monto = formatMonto(l.MontoPesos)
-  const tipo = TIPO_MAP[l.Tipo] || l.Tipo
+  const tipoCodigo = l.Tipo || deducirTipoDeCodigo(codigo)
+  const tipo = TIPO_MAP[tipoCodigo] || tipoCodigo
   const [copied, setCopied] = useState(false)
 
   const handleCopy = () => {
-    onCopyId(l.CodigoLicitacion)
+    onCopyId(codigo)
     setCopied(true)
     setTimeout(() => setCopied(false), 3000)
   }
@@ -145,7 +160,7 @@ function LicitacionCard({ licitacion, onCopyId, onVerDetalle }) {
               fontFamily: 'monospace',
             }}
           >
-            {copied ? '✓ Copiado!' : l.CodigoLicitacion || 'N/A'}
+            {copied ? '✓ Copiado!' : codigo}
             {!copied && (
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <rect x="9" y="9" width="13" height="13" rx="2"/>
@@ -156,7 +171,7 @@ function LicitacionCard({ licitacion, onCopyId, onVerDetalle }) {
 
           {/* Botón ficha detallada */}
           <button
-            onClick={() => onVerDetalle(l.CodigoLicitacion)}
+            onClick={() => onVerDetalle(codigo)}
             style={{
               background: 'rgba(255,255,255,0.05)',
               border: '1px solid var(--border)',
@@ -224,7 +239,7 @@ function LicitacionCard({ licitacion, onCopyId, onVerDetalle }) {
           borderRadius: '5px', padding: '0.15rem 0.45rem',
           letterSpacing: '0.03em',
         }}>
-          {l.CodigoLicitacion || 'N/A'}
+          {codigo}
         </code>
 
         {/* Botón copiar prominente */}
@@ -275,7 +290,7 @@ function LicitacionCard({ licitacion, onCopyId, onVerDetalle }) {
           flexWrap: 'wrap',
         }}>
           <code style={{ fontSize: '0.64rem', color: '#34d399', fontFamily: 'monospace', flex: 1 }}>
-            GET /api/mp/licitaciones/<strong>{l.CodigoLicitacion}</strong>
+            GET /api/mp/licitaciones/<strong>{codigo}</strong>
           </code>
           <span style={{ fontSize: '0.6rem', color: 'var(--text-alt)', whiteSpace: 'nowrap' }}>
             ítems · responsable · descripción
@@ -776,6 +791,21 @@ export default function App() {
     setTimeout(() => setToast(null), 3000)
   }
 
+  // Caché en cliente para evitar re-consultar fichas ya vistas
+  const fichasCache = useRef({})
+
+  const procesarLicitaciones = (lista) => {
+    return (lista || []).map(item => {
+      const codigo = item.CodigoLicitacion || item.CodigoExterno || item.id || 'N/A'
+      return {
+        ...item,
+        CodigoLicitacion: codigo,
+        CodigoExterno: codigo,
+        Tipo: item.Tipo || deducirTipoDeCodigo(codigo),
+      }
+    })
+  }
+
   // ── Peticiones al backend ──────────────────────────────────────────────────
   
   const cargarLicitacionesHoy = async () => {
@@ -798,7 +828,7 @@ export default function App() {
         const resAyer = await fetch(`/api/mp/licitaciones/rango?desde=${ayerStr}&hasta=${ayerStr}`)
         const dataAyer = await resAyer.json()
         if (resAyer.ok && dataAyer.status !== 'error' && (dataAyer.Listado || []).length > 0) {
-          setLicitaciones(dataAyer.Listado)
+          setLicitaciones(procesarLicitaciones(dataAyer.Listado))
           setModoFiltroFecha('rango')
           setFechaDesde(ayerStr)
           setFechaHasta(ayerStr)
@@ -807,11 +837,11 @@ export default function App() {
         }
       }
 
-      setLicitaciones(listado)
+      setLicitaciones(procesarLicitaciones(listado))
       mostrarToast(`✅ ${data.Cantidad} licitaciones cargadas`, 'success')
     } catch (err) {
       setError(err.message)
-      setLicitaciones(MOCK_LICITACIONES)
+      setLicitaciones(procesarLicitaciones(MOCK_LICITACIONES))
       setIsDemoMode(true)
       mostrarToast('⚡ Usando licitaciones de prueba (Modo Demostración)', 'info')
     } finally {
@@ -832,11 +862,11 @@ export default function App() {
       const res = await fetch(`/api/mp/licitaciones/rango?desde=${fechaDesde}&hasta=${fechaHasta}`)
       const data = await res.json()
       if (!res.ok || data.status === 'error') throw new Error(data.mensaje || `Error HTTP ${res.status}`)
-      setLicitaciones(data.Listado || [])
+      setLicitaciones(procesarLicitaciones(data.Listado || []))
       mostrarToast(`✅ ${data.Cantidad} licitaciones en el rango`, 'success')
     } catch (err) {
       setError(err.message)
-      setLicitaciones(MOCK_LICITACIONES)
+      setLicitaciones(procesarLicitaciones(MOCK_LICITACIONES))
       setIsDemoMode(true)
       mostrarToast('⚡ Usando licitaciones de prueba (Modo Demostración)', 'info')
     } finally {
@@ -880,21 +910,34 @@ export default function App() {
   // ── Consulta detallada de Ficha por ID (Licitación o Compra Ágil) ──────────
   
   const abrirDetalleLicitacion = async (id) => {
-    if (!id) return
+    if (!id || id === 'N/A') {
+      mostrarToast('⚠️ ID no disponible para esta licitación', 'warning')
+      return
+    }
+    const idLimpio = String(id).trim()
     setLoadingDetalle(true)
     setDetalleSeleccionado(null) // Reset anterior
+
+    // Si ya está en caché del cliente, abrir inmediatamente
+    if (fichasCache.current[idLimpio]) {
+      setDetalleSeleccionado(fichasCache.current[idLimpio])
+      setLoadingDetalle(false)
+      return
+    }
+
     try {
       if (isDemoMode) {
         // En modo demo, buscamos en el MOCK_DETALLES o creamos uno dinámico básico
-        const mock = MOCK_DETALLES[id] || {
-          CodigoLicitacion: id,
+        const mock = MOCK_DETALLES[idLimpio] || {
+          CodigoLicitacion: idLimpio,
+          CodigoExterno: idLimpio,
           Nombre: 'Licitación de Prueba Simulada',
           Descripcion: 'Esta es una ficha técnica simulada generada automáticamente. Muestra el detalle del requerimiento público para pruebas de interfaz en modo demostración.',
           Organismo: 'Ilustre Municipalidad de Las Condes (Demo)',
           NombreRegion: 'Región Metropolitana de Santiago',
           Comuna: 'Las Condes',
           MontoPesos: '35000000',
-          Tipo: 'LQ',
+          Tipo: deducirTipoDeCodigo(idLimpio) || 'LQ',
           FechaPublicacion: new Date().toISOString(),
           FechaCierre: new Date(Date.now() + 5*24*60*60*1000).toISOString(),
           ResponsableContrato: 'Administrador de Pruebas TI',
@@ -902,14 +945,23 @@ export default function App() {
             { NombreProducto: 'Soporte y Consultoría Tecnológica Estándar', Cantidad: 1, UnidadMedida: 'Global' }
           ]
         }
+        fichasCache.current[idLimpio] = mock
         setDetalleSeleccionado(mock)
       } else {
-        const res = await fetch(`/api/mp/licitaciones/${encodeURIComponent(id.trim())}`)
+        const res = await fetch(`/api/mp/licitaciones/${encodeURIComponent(idLimpio)}`)
         const data = await res.json()
         if (!res.ok || data.status === 'error') {
           throw new Error(data.mensaje || 'Error al obtener ficha de licitación.')
         }
-        const detalle = data.detalle || data
+        const detalleRaw = data.detalle || data
+        const idFinal = detalleRaw.CodigoLicitacion || detalleRaw.CodigoExterno || idLimpio
+        const detalle = {
+          ...detalleRaw,
+          CodigoLicitacion: idFinal,
+          CodigoExterno: idFinal,
+          Tipo: detalleRaw.Tipo || deducirTipoDeCodigo(idFinal),
+        }
+        fichasCache.current[idLimpio] = detalle
         setDetalleSeleccionado(detalle)
       }
     } catch (err) {
