@@ -196,7 +196,7 @@ async function analizarConGemini(licitaciones, perfilEmpresa) {
  * @param {boolean} opciones.usarIA - true = Gemini (consume tokens), false = heurístico local (sin costo)
  */
 async function obtenerRecomendaciones(licitaciones, perfilEmpresa, opciones = {}) {
-  const { usarIA = false } = opciones;
+  const { usarIA = true } = opciones;
 
   if (!licitaciones || licitaciones.length === 0) {
     return [];

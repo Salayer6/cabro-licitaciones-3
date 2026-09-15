@@ -165,7 +165,7 @@ router.get('/licitaciones/:id', requireTicket, asyncHandler(async (req, res) => 
  * }
  */
 router.post('/licitaciones/recomendar', asyncHandler(async (req, res) => {
-  const { licitaciones, perfilEmpresa, usarIA = false } = req.body;
+  const { licitaciones, perfilEmpresa, usarIA = true } = req.body;
 
   if (!licitaciones || !Array.isArray(licitaciones)) {
     return res.status(400).json({

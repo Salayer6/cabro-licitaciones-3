@@ -770,8 +770,8 @@ export default function App() {
   const [perfilEmpresa, setPerfilEmpresa] = useState(() => {
     return localStorage.getItem('perfil_empresa') || ''
   })
-  // false = motor heurístico local (sin tokens) | true = Gemini IA (consume tokens)
-  const [usarIA, setUsarIA] = useState(false)
+  // true = Gemini IA por defecto | false = motor heurístico local
+  const [usarIA, setUsarIA] = useState(true)
   const [recomendaciones, setRecomendaciones] = useState([])
   const [loadingIA, setLoadingIA] = useState(false)
 
