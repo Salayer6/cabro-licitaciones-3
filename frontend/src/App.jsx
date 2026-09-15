@@ -727,9 +727,9 @@ const MOCK_DETALLES = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const TABS = [
+  { id: 'recomendador', label: '🤖 Recomendador IA' },
   { id: 'licitaciones', label: '📋 Licitaciones' },
   { id: 'analitica',    label: '📊 Analítica' },
-  { id: 'recomendador', label: '🤖 Recomendador IA' },
 ]
 
 export default function App() {
@@ -738,7 +738,7 @@ export default function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [toast, setToast] = useState(null)
-  const [activeTab, setActiveTab] = useState('licitaciones')
+  const [activeTab, setActiveTab] = useState('recomendador')
   const [isDemoMode, setIsDemoMode] = useState(false)
 
   // Consulta por ID y Ficha
