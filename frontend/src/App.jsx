@@ -874,6 +874,76 @@ export default function App() {
     }
   }
 
+// ── MOTOR HEURÍSTICO CLIENTE (FALLBACK RESILIENTE) ─────────────────────────
+function analizarHeuristicoClient(licitaciones, perfilEmpresa) {
+  const perfil = (perfilEmpresa || '').toLowerCase()
+  const palabrasFiltro = perfil
+    .replace(/[.,\/#!$%\^&\*;:{}=\-_`~()]/g, '')
+    .split(/\s+/)
+    .filter(p => p.length > 3)
+
+  const stopwords = new Set([
+    'para', 'como', 'con', 'desde', 'hacia', 'hasta', 'por', 'segun', 'sin', 'sobre', 'tras',
+    'este', 'esta', 'estos', 'estas', 'esos', 'esas', 'aquel', 'aquella', 'suyo', 'suya', 'cuyo',
+    'servicios', 'servicio', 'productos', 'producto', 'empresa', 'venta', 'compra', 'adquisicion',
+    'contratacion', 'suministro', 'desarrollo', 'provision'
+  ])
+
+  const palabrasClave = palabrasFiltro.filter(p => !stopwords.has(p))
+
+  return (licitaciones || []).map(l => {
+    const nombre = (l.Nombre || '').toLowerCase()
+    const organismo = (l.Organismo || '').toLowerCase()
+    const descripcion = (l.Descripcion || '').toLowerCase()
+    const textoCompleto = `${nombre} ${organismo} ${descripcion}`
+
+    let score = 0
+    let coincidencias = []
+
+    palabrasClave.forEach(palabra => {
+      if (textoCompleto.includes(palabra)) {
+        score += 25
+        coincidencias.push(palabra)
+      }
+    })
+
+    if (textoCompleto.includes(perfil)) {
+      score += 40
+    }
+
+    if (l.Tipo === 'E' || l.Tipo === 'LS1') {
+      score += 5
+    }
+
+    score = Math.min(score, 100)
+
+    let match = 'Bajo'
+    let justificacion = 'Esta licitación no tiene suficiente coincidencia directa con los términos de tu perfil comercial.'
+
+    if (score >= 70) {
+      match = 'Alto'
+      justificacion = `Excelente coincidencia con tu perfil comercial. Encontramos múltiples coincidencias directas con "${coincidencias.join(', ')}". El comprador es ${l.Organismo || 'un organismo público'}.`
+    } else if (score >= 30) {
+      match = 'Medio'
+      justificacion = `Coincidencia parcial. Existe un interés potencial relacionado con "${coincidencias.slice(0, 3).join(', ')}". Recomendamos revisar las bases para evaluar factibilidad.`
+    } else if (coincidencias.length > 0) {
+      match = 'Bajo'
+      justificacion = `Coincidencia marginal en la palabra "${coincidencias[0]}". Probablemente el rubro no es tu foco principal.`
+    }
+
+    return {
+      CodigoLicitacion: l.CodigoLicitacion || l.CodigoExterno,
+      Nombre: l.Nombre,
+      Organismo: l.Organismo,
+      MontoPesos: l.MontoPesos,
+      FechaCierre: l.FechaCierre,
+      Score: score,
+      Match: match,
+      Justificacion: justificacion
+    }
+  }).sort((a, b) => b.Score - a.Score)
+}
+
   // Petición IA Recomendador
   const analizarConIA = async () => {
     if (!perfilEmpresa.trim()) {
@@ -886,6 +956,16 @@ export default function App() {
     }
 
     setLoadingIA(true)
+
+    // Si estamos en modo demo y no se seleccionó IA de pago, resolver directamente en el cliente
+    if (isDemoMode && !usarIA) {
+      const recs = analizarHeuristicoClient(licitaciones, perfilEmpresa)
+      setRecomendaciones(recs)
+      mostrarToast('🤖 Recomendaciones calculadas (Motor Heurístico Local)', 'success')
+      setLoadingIA(false)
+      return
+    }
+
     try {
       const res = await fetch('/api/mp/licitaciones/recomendar', {
         method: 'POST',
@@ -896,12 +976,26 @@ export default function App() {
           usarIA,
         })
       })
+
+      const contentType = res.headers.get('content-type') || ''
+      if (!contentType.includes('application/json')) {
+        // Si el backend devolvió HTML (404, proxy o servidor apagado), fallback automático
+        console.warn('El servidor devolvió respuesta no-JSON. Aplicando motor heurístico en navegador...')
+        const recs = analizarHeuristicoClient(licitaciones, perfilEmpresa)
+        setRecomendaciones(recs)
+        mostrarToast('🤖 Recomendaciones calculadas (Motor Heurístico Local)', 'success')
+        return
+      }
+
       const data = await res.json()
       if (!res.ok || data.status === 'error') throw new Error(data.mensaje || 'Error al obtener recomendaciones.')
       setRecomendaciones(data.recomendaciones || [])
       mostrarToast('🤖 Recomendaciones generadas con éxito', 'success')
     } catch (err) {
-      mostrarToast(`❌ Error IA: ${err.message}`, 'error')
+      console.warn('Fallback a heurístico local por error:', err.message)
+      const recs = analizarHeuristicoClient(licitaciones, perfilEmpresa)
+      setRecomendaciones(recs)
+      mostrarToast('🤖 Recomendaciones calculadas (Motor Heurístico Local)', 'success')
     } finally {
       setLoadingIA(false)
     }

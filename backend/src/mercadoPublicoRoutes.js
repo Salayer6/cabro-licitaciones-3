@@ -36,8 +36,10 @@ const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, ne
 // ──────────────────────────────────────────────────────────────────────────────
 // MIDDLEWARE: Verificar que el ticket esté configurado antes de cada petición
 // ──────────────────────────────────────────────────────────────────────────────
+// MIDDLEWARE: Verificar que el ticket esté configurado para rutas de Mercado Público
+// ──────────────────────────────────────────────────────────────────────────────
 
-router.use((req, res, next) => {
+const requireTicket = (req, res, next) => {
   if (!process.env.MERCADO_PUBLICO_TICKET) {
     return res.status(503).json({
       status:  'error',
@@ -46,7 +48,7 @@ router.use((req, res, next) => {
     });
   }
   next();
-});
+};
 
 // ──────────────────────────────────────────────────────────────────────────────
 // RUTAS
@@ -64,7 +66,7 @@ router.use((req, res, next) => {
  *   Listado: [ { CodigoLicitacion, Nombre, ... }, ... ]
  * }
  */
-router.get('/licitaciones/hoy', asyncHandler(async (req, res) => {
+router.get('/licitaciones/hoy', requireTicket, asyncHandler(async (req, res) => {
   const resultado = await service.getLicitacionesHoy();
   res.json({
     status:  'success',
@@ -83,7 +85,7 @@ router.get('/licitaciones/hoy', asyncHandler(async (req, res) => {
  *
  * Ejemplo: GET /api/mp/licitaciones/rango?desde=2025-06-01&hasta=2025-06-26
  */
-router.get('/licitaciones/rango', asyncHandler(async (req, res) => {
+router.get('/licitaciones/rango', requireTicket, asyncHandler(async (req, res) => {
   const { desde, hasta } = req.query;
 
   if (!desde || !hasta) {
@@ -117,7 +119,7 @@ router.get('/licitaciones/rango', asyncHandler(async (req, res) => {
  *
  * Ejemplo: GET /api/mp/licitaciones/estado/5
  */
-router.get('/licitaciones/estado/:estado', asyncHandler(async (req, res) => {
+router.get('/licitaciones/estado/:estado', requireTicket, asyncHandler(async (req, res) => {
   const { estado } = req.params;
 
   // Validación: el estado debe ser un número
@@ -138,7 +140,7 @@ router.get('/licitaciones/estado/:estado', asyncHandler(async (req, res) => {
  *
  * Ejemplo: GET /api/mp/licitaciones/750622-19-LQ24
  */
-router.get('/licitaciones/:id', asyncHandler(async (req, res) => {
+router.get('/licitaciones/:id', requireTicket, asyncHandler(async (req, res) => {
   const { id } = req.params;
 
   if (!id || id.trim() === '') {

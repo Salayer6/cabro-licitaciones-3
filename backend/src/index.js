@@ -11,15 +11,15 @@ const app  = express();
 const port = process.env.PORT || 3001;
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // ── API oficial de Mercado Público (api.mercadopublico.cl) ───────────────────
-// Todos los endpoints de este router se sirven bajo /api/mp
-// Requiere la variable de entorno MERCADO_PUBLICO_TICKET configurada en .env
-app.use('/api/mp', mercadoPublicoRoutes);
+// Compatible tanto con despliegue local (/api/mp) como Vercel serverless (/mp o /api/mp)
+app.use(['/api/mp', '/mp'], mercadoPublicoRoutes);
 
 // ── Health check ─────────────────────────────────────────────────────────────
-app.get('/api/health', (req, res) => {
+app.get(['/api/health', '/health'], (req, res) => {
   res.json({
     status:  'ok',
     ticket:  !!process.env.MERCADO_PUBLICO_TICKET,
