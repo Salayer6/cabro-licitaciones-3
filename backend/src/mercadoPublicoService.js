@@ -212,26 +212,80 @@ async function getLicitacionesHoy() {
  * El código tiene el formato de Mercado Público: "NNNN-NN-XXNN"
  * Ejemplo válido: "750622-19-LQ24"
  *
+// ──────────────────────────────────────────────────────────────────────────────
+// CACHÉ EN MEMORIA PARA FICHAS DETALLADAS (Protege la cuota del ticket)
+// ──────────────────────────────────────────────────────────────────────────────
+const detalleCache = new Map();
+const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hora de caché
+
+/**
+ * Deduce el tipo de licitación a partir de las letras del código único.
+ * Formato estándar MP: [Organismo]-[Correlativo]-[Tipo][Año] (ej: 1509-5-LQ26, 750622-19-L124)
+ * @param {string} codigo
+ * @returns {string|null}
+ */
+function deducirTipoDeCodigo(codigo) {
+  if (!codigo || typeof codigo !== 'string') return null;
+  const match = codigo.match(/-([A-Za-z]+[0-9]*)\d{2}$/);
+  return match ? match[1].toUpperCase() : null;
+}
+
+/**
+ * Infiere el organismo comprador si viene mencionado en el nombre de la licitación.
+ * @param {string} nombre
+ * @returns {string|null}
+ */
+function inferirOrganismoDeTexto(nombre) {
+  if (!nombre || typeof nombre !== 'string') return null;
+  const match = nombre.match(/(?:para (?:el|la|los|las)?\s*|en (?:el|la)?\s*)?((?:Hospital|Municipalidad|I\.?\s*Municipalidad|Servicio de Salud|Universidad|Ministerio|Subsecretar[ií]a|Intendencia|Gobernaci[oó]n|Carabineros|Ej[eé]rcito|Armada|FACH|PDI|JUNAEB|JUNJI|SENAME|SENCE|SAG|CONAF|FOSIS|INDAP|SERNAC|TGR|SII|MOP|MINEDUC|MINSAL|MINVU)\b[^\n,.;()]*)/i);
+  return match ? match[1].trim() : null;
+}
+
+/**
+ * Busca una licitación específica por su código/ID y retorna su detalle completo.
+ * La API oficial de Mercado Público consulta por query param: ?codigo=[CODIGO]&ticket=[TICKET]
+ *
  * @param {string} codigoLicitacion - Código único de la licitación
- * @returns {Promise<LicitacionDetalle>} Detalle completo de la licitación
+ * @returns {Promise<LicitacionDetalle>} Detalle completo normalizado de la licitación
  */
 async function getLicitacionById(codigoLicitacion) {
   if (!codigoLicitacion || typeof codigoLicitacion !== 'string') {
     throw new Error('[getLicitacionById] El parámetro codigoLicitacion es obligatorio y debe ser string.');
   }
 
-  // Endpoint: /licitaciones/{codigo}
-  // El código va en el PATH (no como query param) para obtener el detalle completo
-  const url    = `/licitaciones/${encodeURIComponent(codigoLicitacion.trim())}`;
-  const params = buildParams();
+  const codigoLimpio = codigoLicitacion.trim();
+
+  // 1. Revisar si ya está en caché válida
+  const cacheItem = detalleCache.get(codigoLimpio);
+  if (cacheItem && Date.now() - cacheItem.timestamp < CACHE_TTL_MS) {
+    return cacheItem.data;
+  }
+
+  // 2. Consulta a la API con parámetro ?codigo=
+  const params = buildParams({ codigo: codigoLimpio });
+  let rawResponseData = null;
 
   try {
-    const { data } = await apiClient.get(url, { params });
-    // La API devuelve el detalle directamente (no como listado)
-    return data;
+    const { data } = await apiClient.get('/licitaciones.json', { params });
+    rawResponseData = data;
   } catch (err) {
-    handleApiError(err, 'getLicitacionById');
+    // Fallback a ruta sin .json en caso de variación
+    try {
+      const { data } = await apiClient.get('/licitaciones', { params });
+      rawResponseData = data;
+    } catch (fallbackErr) {
+      handleApiError(err, 'getLicitacionById');
+    }
   }
+
+  const detalleNormalizado = normalizarDetalle(rawResponseData, codigoLimpio);
+
+  // Guardar en caché
+  if (detalleNormalizado) {
+    detalleCache.set(codigoLimpio, { data: detalleNormalizado, timestamp: Date.now() });
+  }
+
+  return detalleNormalizado;
 }
 
 /**
@@ -299,14 +353,13 @@ async function getLicitacionesPorRango(fechaInicio, fechaFin) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// NORMALIZADOR DE RESPUESTA
+// NORMALIZADORES DE RESPUESTA
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
  * Garantiza que la respuesta de listado siempre tenga la forma esperada:
  * { Cantidad: number, Listado: LicitacionResumen[] }
- *
- * La API puede devolver null o estructuras incompletas en casos borde.
+ * Mapea CodigoExterno oficial a CodigoLicitacion e infiere Tipo y Organismo si faltan.
  *
  * @param {any} data - Respuesta cruda de la API
  * @returns {RespuestaListado}
@@ -315,9 +368,75 @@ function normalizarListado(data) {
   if (!data || typeof data !== 'object') {
     return { Cantidad: 0, Listado: [] };
   }
+
+  const rawListado = Array.isArray(data.Listado) ? data.Listado : [];
+  const listadoNormalizado = rawListado.map(item => {
+    const codigo = item.CodigoExterno || item.CodigoLicitacion || item.id || null;
+    const tipo = item.Tipo || deducirTipoDeCodigo(codigo);
+    const organismo = item.Organismo || item.Comprador?.NombreOrganismo || inferirOrganismoDeTexto(item.Nombre) || '—';
+
+    return {
+      ...item,
+      CodigoLicitacion: codigo,
+      CodigoExterno: codigo,
+      Tipo: tipo,
+      Organismo: organismo,
+      MontoPesos: item.MontoEstimado || item.MontoPesos || null,
+    };
+  });
+
   return {
-    Cantidad: typeof data.Cantidad === 'number' ? data.Cantidad : (data.Listado?.length ?? 0),
-    Listado:  Array.isArray(data.Listado) ? data.Listado : [],
+    Cantidad: typeof data.Cantidad === 'number' ? data.Cantidad : listadoNormalizado.length,
+    Listado: listadoNormalizado,
+  };
+}
+
+/**
+ * Normaliza la respuesta detallada de una licitación devuelta por la API.
+ * Desempaqueta { Listado: [ item ] } y extrae el comprador, monto, fechas e ítems.
+ *
+ * @param {any} data - Respuesta cruda de la API
+ * @param {string} codigoSolicitado - Código que se consultó
+ * @returns {Object} Ficha detallada limpia
+ */
+function normalizarDetalle(data, codigoSolicitado = '') {
+  if (!data) return null;
+
+  // Mercado Público devuelve el detalle en un arreglo Listado de 1 elemento
+  const item = Array.isArray(data.Listado) && data.Listado.length > 0
+    ? data.Listado[0]
+    : (data.detalle || data);
+
+  if (!item || typeof item !== 'object') return data;
+
+  const codigo = item.CodigoExterno || item.CodigoLicitacion || codigoSolicitado || '';
+  const comprador = item.Comprador || {};
+  const itemsRaw = item.Items?.Listado || item.Items || [];
+
+  return {
+    ...item,
+    CodigoLicitacion: codigo,
+    CodigoExterno: codigo,
+    Nombre: item.Nombre || 'Sin nombre',
+    Descripcion: item.Descripcion || 'Sin descripción disponible',
+    Organismo: comprador.NombreOrganismo || item.Organismo || inferirOrganismoDeTexto(item.Nombre) || 'Sin Organismo',
+    NombreRegion: comprador.RegionUnidad || item.NombreRegion || 'Sin Región',
+    Comuna: comprador.ComunaUnidad || item.Comuna || 'Sin Comuna',
+    RutOrganismo: comprador.RutUnidad || item.RutOrganismo || '',
+    ResponsableContrato: comprador.NombreUsuario || item.ResponsableContrato || 'No especificado',
+    MontoPesos: item.MontoEstimado || item.MontoPesos || null,
+    Moneda: item.Moneda || 'CLP',
+    Tipo: item.Tipo || deducirTipoDeCodigo(codigo),
+    FechaPublicacion: item.FechaCreacion || item.FechaPublicacion || '',
+    FechaCierre: item.FechaCierre || '',
+    CodigoEstado: item.CodigoEstado || 5,
+    Items: Array.isArray(itemsRaw) ? itemsRaw.map((it, idx) => ({
+      Correlativo: it.Correlativo || idx + 1,
+      NombreProducto: it.NombreProducto || it.Descripcion || it.Nombre || 'Producto / Requerimiento',
+      Cantidad: it.Cantidad || 1,
+      UnidadMedida: it.UnidadMedida || 'Unidad',
+      Categoria: it.Categoria || '',
+    })) : []
   };
 }
 
